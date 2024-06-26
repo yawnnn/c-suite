@@ -50,8 +50,15 @@ inline static void v_realloc(Vec *v, size_t nelem)
     v->cap = nelem;
 }
 
-/* if shrink, realloc by exact number
- * if grow  , realloc by GROWTH_FACTOR when possible, otherwise exact number */
+/**
+ * @brief resize Vec.
+ * 
+ * if shrink, realloc by exact number
+ * if grow  , realloc by GROWTH_FACTOR when possible, otherwise exact number
+ * 
+ * @param s Vstr
+ * @param nelem number of elements requested
+ */
 static void v_resize(Vec *v, size_t nelem) 
 {
     if (v->cap) {
@@ -69,7 +76,6 @@ static void v_resize(Vec *v, size_t nelem)
 /*                                      PUBLIC METHODS                                      */
 /* ======================================================================================== */
 
-/* sets the variables for vector with elements of <szof>. The vector is still NULL */
 void vec_new(Vec *v, size_t szof) 
 {
     v->cap = 0;
@@ -77,15 +83,12 @@ void vec_new(Vec *v, size_t szof)
     v->szof = szof;
 }
 
-/* new vector of elements of <szof>, with capacity <nelem>
- * the elements are not initialized and length is 0 */
 void vec_new_with(Vec *v, size_t szof, size_t nelem)
 {
     vec_new(v, szof);
     vec_reserve(v, nelem);
 }
 
-/* new vector with <nelem> elements of <szof>. everything memset to 0 */
 void vec_new_with_zeroed(Vec *v, size_t szof, size_t nelem)
 {
     vec_new_with(v, nelem, szof);
@@ -93,15 +96,12 @@ void vec_new_with_zeroed(Vec *v, size_t szof, size_t nelem)
     v->len = nelem;
 }
 
-/* new vector from a c-style array <arr> with <nelem> elements of <szof> */
 void vec_from(Vec *v, size_t szof, void *arr, size_t nelem)
 {
     vec_new(v, szof);
     vec_insert_n(v, arr, 0, nelem);
 }
 
-/* clear variables, release memory. 
- * if necessary, the single elements need to be freed by the user before this */
 void vec_clear(Vec *v) 
 {
     if (v->cap)
@@ -110,33 +110,47 @@ void vec_clear(Vec *v)
     v->len = 0;
 }
 
-/* reserve memory for at least <nelem> number of elements */
 void vec_reserve(Vec *v, size_t nelem)
 {
     if (nelem > v->cap)
         v_resize(v, nelem);
 }
 
-/* ensures the memory allocated is exactly as needed for the length */
 void vec_shrink_to_fit(Vec *v)
 {
     if (v->cap > v->len)
         v_resize(v, v->len);
 }
 
-/* insert <elem> at the end of the vector */
+void *vec_elem_at(Vec *v, size_t pos)
+{
+    if (pos < v->len)
+        return v_elem_at(v, pos);
+    return NULL;
+}
+
+void vec_get(Vec *v, size_t pos, void *elem)
+{
+    if (pos < v->len)
+        v_memcpy_to(elem, v, pos, 1);
+}
+
+void vec_set(Vec *v, void *elem, size_t pos) 
+{
+    if (pos < v->len)
+        v_memcpy(v, pos, elem, 1);
+}
+
 void vec_push(Vec *v, void *elem) 
 {
     vec_insert_n(v, elem, 1, v->len);
 }
 
-/* insert <elem> at <pos> */
 void vec_insert(Vec *v, void *elem, size_t pos)
 {
     vec_insert_n(v, elem, 1, pos);
 }
 
-/* insert <nelem> <elems> starting from <pos> */
 void vec_insert_n(Vec *v, void *elems, size_t nelem, size_t pos)
 {
     if (pos <= v->len) {
@@ -147,22 +161,16 @@ void vec_insert_n(Vec *v, void *elems, size_t nelem, size_t pos)
     }
 }
 
-/* remove element from the end of the array
- * if <elem> != NULL the element is copied to it, so that memory it owns can be freed by the caller */
 void vec_pop(Vec *v, void *elem) 
 {
     vec_remove_n(v, v->len - 1, 1, elem);
 }
 
-/* remove the element at <pos>. 
- * if <elem> != NULL the element is copied to it, so that memory it owns can be freed by the caller */
 void vec_remove(Vec *v, size_t pos, void *elem) 
 {
     vec_remove_n(v, pos, elem, 1);
 }
 
-/* remove the <nelem> elements starting at <pos>. 
- * if <elems> != NULL the elements are copied to it, so that memory they own can be freed by the caller */
 void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
 {
     if (pos + nelem - 1 < v->len) {
@@ -174,32 +182,6 @@ void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
     }
 }
 
-/* return element at <pos> in <elem> */
-void vec_get(Vec *v, size_t pos, void *elem)
-{
-    if (pos < v->len)
-        v_memcpy_to(elem, v, pos, 1);
-}
-
-/* set element at <pos> equal to <elem> */
-void vec_set(Vec *v, void *elem, size_t pos) 
-{
-    if (pos < v->len)
-        v_memcpy(v, pos, elem, 1);
-}
-
-/* pointer to element at <pos>. 
- * if changes to the Vec are made, this pointer can become invalid */
-/* TODO --- make inline? i would have to not use v_elem_at() */
-void *vec_elem_at(Vec *v, size_t pos)
-{
-    if (pos < v->len)
-        return v_elem_at(v, pos);
-    return NULL;
-}
-
-/* swap elements at pos <pos1> and <pos2>
- * for simplicity, a pointer to a element <tmp> is required */
 void vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp)
 {
     if (pos1 < v->len && pos2 < v->len) {
@@ -209,8 +191,7 @@ void vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp)
     }
 }
 
-/* sort in <order> (VEC_ORDER[ASC|DESC]) */
-/* TODO --- Better algorithm */
+// TODO --- proper sorting algorithm
 void vec_sort(Vec *v, int order)
 {
     int i, j;
@@ -238,9 +219,6 @@ void vec_sort(Vec *v, int order)
         free(pval);
 }
 
-/* iterate over elements of array.
- * call first with vec_iter_reset() to reset the interal counter
- * read element in <elem>, returns false if it's done */
 bool vec_iter(Vec *v, void *elem) 
 {
     static size_t i = 0;
