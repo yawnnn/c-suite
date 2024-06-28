@@ -1,238 +1,248 @@
+/**
+ * @file vector.h
+ */
+
 #ifndef __VECTOR_H__
 #define __VECTOR_H__
 
 #include <stdbool.h>
 
-typedef struct __Vec {
-    char *ptr;   /**< underlying data (if needed, access through vec_data()) */
-    size_t cap;  /**< number of elements for which there is space allocated */
-    size_t len;  /**< number of usable elements */
+/**
+ * @brief dynamic array
+ */
+typedef struct Vector {
+    char *ptr; /**< underlying data (if needed, access through Vector_data()) */
+    size_t cap; /**< number of elements for which there is space allocated */
+    size_t len; /**< number of usable elements */
     size_t szof; /**< sizeof() of the data type to be held */
-} Vec;
+} Vector;
 
 /**
- * @brief new Vec
+ * @brief new Vector
  *
- * the Vec is not allocated, therefore vec_data() returns NULL
+ * the Vector is not allocated, therefore Vector_data() returns NULL
  *
- * @param v Vec
+ * @param v Vector
  * @param szof size of the single elements it's going to contain
  */
-void vec_new(Vec *v, size_t szof);
+void Vector_new(Vector *v, size_t szof);
 
 /**
- * @brief new Vec with reserved space
+ * @brief new Vector with reserved space
  *
- * the Vec has 0 length, therefore vec_data() returns NULL
+ * the Vector has 0 length, therefore Vector_data() returns NULL
  *
- * @param v Vec
+ * @param v Vector
  * @param szof size of the single elements it's going to contain
  * @param nelem number of elements to reserve memory for
  */
-void vec_new_with(Vec *v, size_t szof, size_t nelem);
+void Vector_new_with(Vector *v, size_t szof, size_t nelem);
 
 /**
- * @brief new Vec with elements initialized to zero
+ * @brief new Vector with elements initialized to zero
  *
- * the Vec has <nelem> length therefore vec_data() is valid
+ * the Vector has @p nelem length therefore Vector_data() is valid
  *
- * @param v Vec
+ * @param v Vector
  * @param szof size of the single elements it's going to contain
  * @param nelem number of elements to initialize to zero
  */
-void vec_new_with_zeroed(Vec *v, size_t szof, size_t nelem);
+void Vector_new_with_zeroed(Vector *v, size_t szof, size_t nelem);
 
 /**
- * @brief new Vec copied from existing array
+ * @brief new Vector copied from existing array
  *
- * <arr> is shallow-copied
+ * @p arr is shallow-copied
  *
- * @param v Vec
+ * @param v Vector
  * @param szof size of the single elements it's going to contain
  * @param arr source array
  * @param nelem number of elements of array
  */
-void vec_from(Vec *v, size_t szof, void *arr, size_t nelem);
+void Vector_from(Vector *v, size_t szof, void *arr, size_t nelem);
 
 /**
  * @brief clear variables, release memory
  *
  * if the single elements own memory, that needs to be release separately
  *
- * @param v Vec
+ * @param v Vector
  */
-void vec_clear(Vec *v);
+void Vector_clear(Vector *v);
 
 /**
  * @brief reserve memory ahead of time
  *
- * @param v Vec
+ * @param v Vector
  * @param nelem number of elements to reserve memory for
  */
-void vec_reserve(Vec *v, size_t nelem);
+void Vector_reserve(Vector *v, size_t nelem);
 
 /**
  * @brief shrink allocated memory to what is exactly needed for length
  *
- * @param v Vec
+ * @param v Vector
  */
-void vec_shrink_to_fit(Vec *v);
+void Vector_shrink_to_fit(Vector *v);
 
 /**
  * @brief return pointer to element at pos
  *
- * if changes to the Vec are made, this pointer can become invalid
+ * if changes to the Vector are made, this pointer can become invalid
  *
- * @param v Vec
+ * @param v Vector
  * @param pos index of the element
  * @return pointer to element
  */
-void *vec_elem_at(Vec *v, size_t pos);
+void *Vector_elem_at(Vector *v, size_t pos);
 
 /**
  * @brief get a shallow-copy of the element at pos
  *
- * @param v Vec
+ * @param v Vector
  * @param pos index of the element
  * @param elem destination of the copy
  */
-void vec_get(Vec *v, size_t pos, void *elem);
+void Vector_get(Vector *v, size_t pos, void *elem);
 
 /**
  * @brief set element at pos through shallow-copy
  *
- * @param v Vec
+ * @param v Vector
  * @param elem source of the copy
  * @param pos index of the element
  */
-void vec_set(Vec *v, void *elem, size_t pos);
+void Vector_set(Vector *v, void *elem, size_t pos);
 
 /**
  * @brief insert element at the end of the vector through shallow-copy
  *
- * @param v Vec
+ * @param v Vector
  * @param elem element to insert
  */
-void vec_push(Vec *v, void *elem);
+void Vector_push(Vector *v, void *elem);
 
 /**
  * @brief insert element at pos through shallow-copy
  *
- * @param v Vec
+ * @param v Vector
  * @param elem element to insert
  * @param pos index of the element
  */
-void vec_insert(Vec *v, void *elem, size_t pos);
+void Vector_insert(Vector *v, void *elem, size_t pos);
 
 /**
  * @brief bulk insert of elements starting at pos through shallow-copy
  *
- * @param v Vec
+ * @param v Vector
  * @param elems array of elements
  * @param nelem number of elements of the array
  * @param pos starting index of the elements
  */
-void vec_insert_n(Vec *v, void *elems, size_t nelem, size_t pos);
+void Vector_insert_n(Vector *v, void *elems, size_t nelem, size_t pos);
 
 /**
  * @brief remove element from the end of the vector
  *
- * if the element owns memory, that needs to be freed through <elem>
+ * if the element owns memory, that needs to be freed through @p elem
  * 
- * @param v Vec
+ * @param v Vector
  * @param elem element removed, can be NULL
  */
-void vec_pop(Vec *v, void *elem);
+void Vector_pop(Vector *v, void *elem);
 
 /**
  * @brief remove element from pos, shifting the ones after
  *
- * if the element owns memory, that needs to be freed through <elem>
+ * if the element owns memory, that needs to be freed through @p elem
  * 
- * @param v Vec
+ * @param v Vector
  * @param pos index of the element
  * @param elem element removed, can be NULL
  */
-void vec_remove(Vec *v, size_t pos, void *elem);
+void Vector_remove(Vector *v, size_t pos, void *elem);
 
 /**
  * @brief bulk remove elements starting at pos, shifting the ones after
  *
- * if the elements own memory, that needs to be freed through <elems>
+ * if the elements own memory, that needs to be freed through @p elems
  * 
- * @param v Vec
+ * @param v Vector
  * @param pos index of the elements
  * @param elems elements removed, can be NULL
  * @param nelem number of elements to be removed
  */
-void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
+void Vector_remove_n(Vector *v, size_t pos, void *elems, size_t nelem);
 
 /**
- * @brief swap two elements of the Vec
+ * @brief swap two elements of the Vector
  *
- * <tmp> is required for simplicity of implementation. 
+ * @p tmp is required for simplicity of implementation. 
  * its value after the call is undefined and shouldn't be used
  * 
- * @param v Vec
+ * @param v Vector
  * @param pos1 index of the element
  * @param pos2 index of the element
  * @param tmp pointer to memory big enough to contain an element of the vector
  */
-void vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
+void Vector_swap(Vector *v, size_t pos1, size_t pos2, void *tmp);
 
 /**
  * @brief sort the vector through a simple memcmp of the elements
  *
- * @param v Vec
+ * @param v Vector
  * @param order order in which to sort VEC_SORT_[ASC|DESC]
  */
-void vec_sort(Vec *v, int order);
+void Vector_sort(Vector *v, int order);
 
 /**
  * @brief iterate over the elements of the vector
  *
- * before starting the iteration, call vec_iter_reset()
+ * before starting the iteration, call Vector_iter_reset()
  * then, call in a loop until the return value is false
- * the element of the iteration is shallow-copied in <elem>
+ * the element of the iteration is shallow-copied in @p elem
  * 
- * @param v Vec
+ * @param v Vector
  * @param elem contains the element of this iteration
- * @return true until end of Vec is reached
+ * @return true until end of Vector is reached
  */
-bool vec_iter(Vec *v, void *elem);
+bool Vector_iter(Vector *v, void *elem);
 
-/* returns pointer to the underlying array data, or NULL if empty
- * if changes to the Vec are made, this pointer can become invalid */
 /**
  * @brief pointer to the underlying data, or NULL
  *
- * @param v Vec
+ * @param v Vector
  * @return pointer to beginning of data
  */
-inline void *vec_data(Vec *v)
-{
+inline void *Vector_data(Vector *v) {
     if (v->len)
         return (void *)v->ptr;
-    return NULL;
+    return (void *)0;
 }
 
 /**
- * @brief wether Vec is empty
+ * @brief if Vector is empty
  *
- * @param v Vec
+ * @param v Vector
  * @return boolean
  */
-inline bool vec_is_empty(Vec *v)
-{
+inline bool Vector_is_empty(Vector *v) {
     return v->len == 0;
 }
 
 /**
  * @brief reset iterator
  */
-#define vec_iter_reset()    vec_iter(NULL, NULL)
+#define Vector_iter_reset() Vector_iter(NULL, NULL)
 
-#define VEC_ORDER_ASC        1 // sort in ascending order
-#define VEC_ORDER_DESC      -1 // sort in descending order
+/**
+ * @brief sort in ascending order
+ */
+#define VEC_ORDER_ASC 1
+
+/**
+ * @brief sort in descending order
+ */
+#define VEC_ORDER_DESC -1
 
 #endif /* __VECTOR_H__ */
