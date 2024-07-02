@@ -47,7 +47,7 @@ LLNode *LinkedList_next(LinkedList *list, LLNode *curr) {
         return list->head;
 }
 
-LLNode *LinkedList_next_back(LinkedList *list, LLNode *curr) {
+LLNode *LinkedList_prev(LinkedList *list, LLNode *curr) {
     if (curr) {
         LLNode *prev = NULL;
 
@@ -112,7 +112,7 @@ void *LinkedList_pop_back(LinkedList *list) {
         else {
             LLNode *prev;
 
-            if ((prev = LinkedList_next_back(list, list->tail)) != NULL) {
+            if ((prev = LinkedList_prev(list, list->tail)) != NULL) {
                 prev->next = NULL;
                 list->tail = prev;
             }
@@ -156,7 +156,7 @@ void *LinkedList_remove(LinkedList *list, LLNode *node) {
             list->head = node->next;
             data = node->data;
             LLNode_free(node, NULL);
-        } else if ((prev = LinkedList_next_back(list, node)) != NULL) {
+        } else if ((prev = LinkedList_prev(list, node)) != NULL) {
             prev->next = node->next;
             data = node->data;
             LLNode_free(node, NULL);

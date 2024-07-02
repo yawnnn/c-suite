@@ -16,17 +16,17 @@ typedef struct LLNode {
 } LLNode;
 
 /**
+ * @brief callback to free nodes
+ */
+typedef void (*Func_Free)(void *);
+
+/**
  * @brief linked list
  */
 typedef struct LinkedList {
     LLNode *head;     /**< beginning of the list */
     LLNode *tail;     /**< end of the list */
 } LinkedList;
-
-/**
- * @brief callback to free nodes
- */
-typedef void (*Func_Free)(void *);
 
 /**
  * @brief initialize the list
@@ -63,9 +63,9 @@ LLNode *LinkedList_next(LinkedList *list, LLNode *curr);
  * 
  * @param list linked list
  * @param curr current node
- * @return the next node
+ * @return the previous node
  */
-LLNode *LinkedList_next_back(LinkedList *list, LLNode *curr);
+LLNode *LinkedList_prev(LinkedList *list, LLNode *curr);
 
 /**
  * @brief insert node at the end of the list
