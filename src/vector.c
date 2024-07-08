@@ -10,7 +10,7 @@
  ********************************************************************************************/
 
 inline static char *v_elem_at(Vector *v, size_t pos) {
-    return v->ptr + (pos * v->szof);
+    return ((char *)v->ptr) + (pos * v->szof);
 }
 
 inline static void v_memset(Vector *v, size_t pos, size_t nelem) {
@@ -108,12 +108,6 @@ void Vector_shrink_to_fit(Vector *v) {
         v_resize(v, v->len);
 }
 
-void *Vector_elem_at(Vector *v, size_t pos) {
-    if (pos < v->len)
-        return v_elem_at(v, pos);
-    return NULL;
-}
-
 void Vector_get(Vector *v, size_t pos, void *elem) {
     if (pos < v->len)
         v_memcpy_to(elem, v, pos, 1);
@@ -124,14 +118,6 @@ void Vector_set(Vector *v, void *elem, size_t pos) {
         v_memcpy(v, pos, elem, 1);
 }
 
-void Vector_push(Vector *v, void *elem) {
-    Vector_insert_n(v, elem, 1, v->len);
-}
-
-void Vector_insert(Vector *v, void *elem, size_t pos) {
-    Vector_insert_n(v, elem, 1, pos);
-}
-
 void Vector_insert_n(Vector *v, void *elems, size_t nelem, size_t pos) {
     if (pos <= v->len) {
         Vector_reserve(v, v->len + nelem);
@@ -139,14 +125,6 @@ void Vector_insert_n(Vector *v, void *elems, size_t nelem, size_t pos) {
         v_memcpy(v, pos, elems, nelem);
         v->len += nelem;
     }
-}
-
-void Vector_pop(Vector *v, void *elem) {
-    Vector_remove_n(v, v->len - 1, elem, 1);
-}
-
-void Vector_remove(Vector *v, size_t pos, void *elem) {
-    Vector_remove_n(v, pos, elem, 1);
 }
 
 void Vector_remove_n(Vector *v, size_t pos, void *elems, size_t nelem) {

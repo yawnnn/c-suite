@@ -12,7 +12,7 @@
  * @brief dynamic array
  */
 typedef struct Vector {
-    char *ptr; /**< underlying data (if needed, access through Vector_data()) */
+    void *ptr; /**< underlying data (if needed, access through Vector_data()) */
     size_t cap; /**< number of elements for which there is space allocated */
     size_t len; /**< number of usable elements */
     size_t szof; /**< sizeof() of the data type to be held */
@@ -97,6 +97,18 @@ void Vector_reserve(Vector *v, size_t nelem);
 void Vector_shrink_to_fit(Vector *v);
 
 /**
+ * @brief pointer to the underlying data, or NULL
+ *
+ * @param v Vector
+ * @return pointer to beginning of data
+ */
+inline void *Vector_data(Vector *v) {
+    if (v->len)
+        return v->ptr;
+    return NULL;
+}
+
+/**
  * @brief return pointer to element at pos
  *
  * if changes to the Vector are made, this pointer can become invalid
@@ -105,7 +117,11 @@ void Vector_shrink_to_fit(Vector *v);
  * @param pos index of the element
  * @return pointer to element
  */
-void *Vector_elem_at(Vector *v, size_t pos);
+inline void *Vector_elem_at(Vector *v, size_t pos) {
+    if (pos < v->len)
+        return v_elem_at(v, pos);
+    return NULL;
+}
 
 /**
  * @brief get a shallow-copy of the element at pos
@@ -131,7 +147,9 @@ void Vector_set(Vector *v, void *elem, size_t pos);
  * @param v Vector
  * @param elem element to insert
  */
-void Vector_push(Vector *v, void *elem);
+inline void Vector_push(Vector *v, void *elem) {
+    Vector_insert_n(v, elem, 1, v->len);
+}
 
 /**
  * @brief insert element at pos through shallow-copy
@@ -140,7 +158,9 @@ void Vector_push(Vector *v, void *elem);
  * @param elem element to insert
  * @param pos index of the element
  */
-void Vector_insert(Vector *v, void *elem, size_t pos);
+inline void Vector_insert(Vector *v, void *elem, size_t pos) {
+    Vector_insert_n(v, elem, 1, pos);
+}
 
 /**
  * @brief bulk insert of elements starting at pos through shallow-copy
@@ -160,7 +180,9 @@ void Vector_insert_n(Vector *v, void *elems, size_t nelem, size_t pos);
  * @param v Vector
  * @param elem element removed, can be NULL
  */
-void Vector_pop(Vector *v, void *elem);
+inline void Vector_pop(Vector *v, void *elem) {
+    Vector_remove_n(v, v->len - 1, elem, 1);
+}
 
 /**
  * @brief remove element from pos, shifting the ones after
@@ -171,7 +193,9 @@ void Vector_pop(Vector *v, void *elem);
  * @param pos index of the element
  * @param elem element removed, can be NULL
  */
-void Vector_remove(Vector *v, size_t pos, void *elem);
+inline void Vector_remove(Vector *v, size_t pos, void *elem) {
+    Vector_remove_n(v, pos, elem, 1);
+}
 
 /**
  * @brief bulk remove elements starting at pos, shifting the ones after
@@ -184,6 +208,16 @@ void Vector_remove(Vector *v, size_t pos, void *elem);
  * @param nelem number of elements to be removed
  */
 void Vector_remove_n(Vector *v, size_t pos, void *elems, size_t nelem);
+
+/**
+ * @brief if Vector is empty
+ *
+ * @param v Vector
+ * @return boolean
+ */
+inline bool Vector_is_empty(Vector *v) {
+    return v->len == 0;
+}
 
 /**
  * @brief swap two elements of the Vector
@@ -210,28 +244,6 @@ void Vector_swap(Vector *v, size_t pos1, size_t pos2, void *tmp);
  * @return true until end of Vector is reached
  */
 bool Vector_iter(Vector *v, void *elem);
-
-/**
- * @brief pointer to the underlying data, or NULL
- *
- * @param v Vector
- * @return pointer to beginning of data
- */
-inline void *Vector_data(Vector *v) {
-    if (v->len)
-        return (void *)v->ptr;
-    return (void *)0;
-}
-
-/**
- * @brief if Vector is empty
- *
- * @param v Vector
- * @return boolean
- */
-inline bool Vector_is_empty(Vector *v) {
-    return v->len == 0;
-}
 
 /**
  * @brief reset iterator
