@@ -172,32 +172,6 @@ void Vector_swap(Vector *v, size_t pos1, size_t pos2, void *tmp) {
     }
 }
 
-// TODO --- proper sorting algorithm
-void Vector_sort(Vector *v, int order) {
-    int i, j;
-    char val[256];
-    void *pval;
-    bool alloc;
-
-    if (v->szof <= sizeof(val)) {
-        pval = val;
-        alloc = false;
-    } else {
-        pval = malloc(v->szof);
-        alloc = true;
-    }
-
-    for (i = 0; i < v->len; i++) {
-        for (j = i + 1; j < v->len; j++) {
-            if (v_memcmp(v, i, v_elem_at(v, j), 1) * order > 0)
-                Vector_swap(v, i, j, pval);
-        }
-    }
-
-    if (alloc)
-        free(pval);
-}
-
 bool Vector_iter(Vector *v, void *elem) {
     static size_t i = 0;
 

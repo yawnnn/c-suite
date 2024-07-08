@@ -199,14 +199,6 @@ void Vector_remove_n(Vector *v, size_t pos, void *elems, size_t nelem);
 void Vector_swap(Vector *v, size_t pos1, size_t pos2, void *tmp);
 
 /**
- * @brief sort the vector through a simple memcmp of the elements
- *
- * @param v Vector
- * @param order order in which to sort VEC_SORT_[ASC|DESC]
- */
-void Vector_sort(Vector *v, int order);
-
-/**
  * @brief iterate over the elements of the vector
  *
  * before starting the iteration, call Vector_iter_reset()
@@ -245,15 +237,5 @@ inline bool Vector_is_empty(Vector *v) {
  * @brief reset iterator
  */
 #define Vector_iter_reset() Vector_iter(NULL, NULL)
-
-/**
- * @brief sort in ascending order
- */
-#define VEC_ORDER_ASC 1
-
-/**
- * @brief sort in descending order
- */
-#define VEC_ORDER_DESC -1
 
 #endif /* __VECTOR_H__ */
