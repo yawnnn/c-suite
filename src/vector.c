@@ -91,7 +91,7 @@ void Vector_from(Vector *v, size_t szof, void *arr, size_t nelem) {
     Vector_insert_n(v, arr, 0, nelem);
 }
 
-void Vector_clear(Vector *v) {
+void Vector_free(Vector *v) {
     if (v->cap)
         free(v->ptr);
     v->cap = 0;

@@ -59,7 +59,7 @@ void SString_from(SString *s, const char *source) {
     SString_cpy(s, source);
 }
 
-void SString_clear(SString *s) {
+void SString_free(SString *s) {
     if (s->cap)
         free(s->ptr);
     s->cap = 0;

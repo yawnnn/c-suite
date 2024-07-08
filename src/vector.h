@@ -6,6 +6,7 @@
 #define __VECTOR_H__
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 /**
  * @brief dynamic array
@@ -62,13 +63,23 @@ void Vector_new_with_zeroed(Vector *v, size_t szof, size_t nelem);
 void Vector_from(Vector *v, size_t szof, void *arr, size_t nelem);
 
 /**
- * @brief clear variables, release memory
+ * @brief release memory
  *
- * if the single elements own memory, that needs to be release separately
+ * doesn't reset szof.
+ * if the single elements own memory, that needs to be release before by the caller
  *
  * @param v Vector
  */
-void Vector_clear(Vector *v);
+void Vector_free(Vector *v);
+
+/**
+ * @brief empty the Vector but don't free the memory, so it can be reused
+ *
+ * @param v Vector
+ */
+inline void Vector_truncate(Vector *v) {
+    v->len = 0;
+}
 
 /**
  * @brief reserve memory ahead of time

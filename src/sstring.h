@@ -6,12 +6,13 @@
 #define __VSTR_H__
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 /**
  * @brief Dynamic string
  */
 typedef struct SString {
-    char *ptr; /**< underlying c-style string (access through SString_data()) */
+    char *ptr;  /**< underlying c-style string (access through SString_data()) */
     size_t cap; /**< capacity allocated */
     size_t len; /**< length of the SString */
 } SString;
@@ -44,11 +45,23 @@ void SString_new_with(SString *s, size_t len);
 void SString_from(SString *s, const char *source);
 
 /**
- * @brief clear variables, release memory
+ * @brief release memory
  *
  * @param s SString
  */
-void SString_clear(SString *s);
+void SString_free(SString *s);
+
+/**
+ * @brief empty the string but don't free the memory, so it can be reused
+ *
+ * @param s SString
+ */
+void SString_truncate(SString *s) {
+    if (s->len) {
+        *s->ptr = '\0';
+        s->len = 0;
+    }
+}
 
 /**
  * @brief reserve memory ahead of time
@@ -123,7 +136,21 @@ char *SString_merge(SString *dest, SString *source, const char *sep);
 inline char *SString_data(SString *s) {
     if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
         return s->ptr;
-    return (char *)0;
+    return NULL;
+}
+
+/**
+ * @brief return the underlying c-style string starting at @p pos, or NULL
+ *
+ * @param s SString
+ * @param pos start position
+ * @return c-style string or NULL
+ */
+inline char *SString_data_from(SString *s, size_t pos) {
+    // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
+    if (pos <= s->len && s->cap)
+        return s->ptr + pos;
+    return NULL;
 }
 
 /**
@@ -135,10 +162,5 @@ inline char *SString_data(SString *s) {
 inline bool SString_is_empty(SString *s) {
     return s->len == 0;
 }
-
-/**
- * @brief reset iterator
- */
-#define SString_iter_reset() SString_iter(NULL, NULL)
 
 #endif /* __VSTR_H__ */
