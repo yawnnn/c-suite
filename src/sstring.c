@@ -115,6 +115,6 @@ char *SString_merge(SString *dest, SString *source, const char *sep) {
         SString_reserve(dest, dest->len);
         strcat(strcat(dest->ptr, sep), source->ptr);
     }
-    SString_clear(source);
+    SString_free(source);
     return dest->ptr;
 }

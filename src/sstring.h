@@ -56,7 +56,7 @@ void SString_free(SString *s);
  *
  * @param s SString
  */
-void SString_truncate(SString *s) {
+inline void SString_truncate(SString *s) {
     if (s->len) {
         *s->ptr = '\0';
         s->len = 0;
@@ -77,6 +77,32 @@ void SString_reserve(SString *s, size_t len);
  * @param s SString
  */
 void SString_shrink_to_fit(SString *s);
+
+/**
+ * @brief return the underlying c-style string, or NULL
+ *
+ * @param s SString
+ * @return c-style string or NULL
+ */
+inline char *SString_data(SString *s) {
+    if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
+        return s->ptr;
+    return NULL;
+}
+
+/**
+ * @brief return the underlying c-style string starting at @p pos, or NULL
+ *
+ * @param s SString
+ * @param pos start position
+ * @return c-style string or NULL
+ */
+inline char *SString_data_from(SString *s, size_t pos) {
+    // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
+    if (pos <= s->len && s->cap)
+        return s->ptr + pos;
+    return NULL;
+}
 
 /**
  * @brief strcpy for SString
@@ -126,32 +152,6 @@ char *SString_ncat(SString *dest, const char *source, size_t num);
  * @return the underlying c-style string of @p dest
  */
 char *SString_merge(SString *dest, SString *source, const char *sep);
-
-/**
- * @brief return the underlying c-style string, or NULL
- *
- * @param s SString
- * @return c-style string or NULL
- */
-inline char *SString_data(SString *s) {
-    if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
-        return s->ptr;
-    return NULL;
-}
-
-/**
- * @brief return the underlying c-style string starting at @p pos, or NULL
- *
- * @param s SString
- * @param pos start position
- * @return c-style string or NULL
- */
-inline char *SString_data_from(SString *s, size_t pos) {
-    // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
-    if (pos <= s->len && s->cap)
-        return s->ptr + pos;
-    return NULL;
-}
 
 /**
  * @brief if SString is empty

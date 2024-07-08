@@ -119,7 +119,7 @@ inline void *Vector_data(Vector *v) {
  */
 inline void *Vector_elem_at(Vector *v, size_t pos) {
     if (pos < v->len)
-        return v_elem_at(v, pos);
+        return (void *)(((char *)v->ptr) + (pos * v->szof));
     return NULL;
 }
 
@@ -140,6 +140,16 @@ void Vector_get(Vector *v, size_t pos, void *elem);
  * @param pos index of the element
  */
 void Vector_set(Vector *v, void *elem, size_t pos);
+
+/**
+ * @brief bulk insert of elements starting at pos through shallow-copy
+ *
+ * @param v Vector
+ * @param elems array of elements
+ * @param nelem number of elements of the array
+ * @param pos starting index of the elements
+ */
+void Vector_insert_n(Vector *v, void *elems, size_t nelem, size_t pos);
 
 /**
  * @brief insert element at the end of the vector through shallow-copy
@@ -163,18 +173,22 @@ inline void Vector_insert(Vector *v, void *elem, size_t pos) {
 }
 
 /**
- * @brief bulk insert of elements starting at pos through shallow-copy
+ * @brief bulk remove elements starting at pos, shifting the ones after
  *
+ * doesn't deallocate memory
+ * if the elements own memory, that needs to be freed through @p elems
+ * 
  * @param v Vector
- * @param elems array of elements
- * @param nelem number of elements of the array
- * @param pos starting index of the elements
+ * @param pos index of the elements
+ * @param elems elements removed, can be NULL
+ * @param nelem number of elements to be removed
  */
-void Vector_insert_n(Vector *v, void *elems, size_t nelem, size_t pos);
+void Vector_remove_n(Vector *v, size_t pos, void *elems, size_t nelem);
 
 /**
  * @brief remove element from the end of the vector
  *
+ * doesn't deallocate memory
  * if the element owns memory, that needs to be freed through @p elem
  * 
  * @param v Vector
@@ -187,6 +201,7 @@ inline void Vector_pop(Vector *v, void *elem) {
 /**
  * @brief remove element from pos, shifting the ones after
  *
+ * doesn't deallocate memory
  * if the element owns memory, that needs to be freed through @p elem
  * 
  * @param v Vector
@@ -196,18 +211,6 @@ inline void Vector_pop(Vector *v, void *elem) {
 inline void Vector_remove(Vector *v, size_t pos, void *elem) {
     Vector_remove_n(v, pos, elem, 1);
 }
-
-/**
- * @brief bulk remove elements starting at pos, shifting the ones after
- *
- * if the elements own memory, that needs to be freed through @p elems
- * 
- * @param v Vector
- * @param pos index of the elements
- * @param elems elements removed, can be NULL
- * @param nelem number of elements to be removed
- */
-void Vector_remove_n(Vector *v, size_t pos, void *elems, size_t nelem);
 
 /**
  * @brief if Vector is empty
@@ -233,21 +236,51 @@ inline bool Vector_is_empty(Vector *v) {
 void Vector_swap(Vector *v, size_t pos1, size_t pos2, void *tmp);
 
 /**
- * @brief iterate over the elements of the vector
- *
- * before starting the iteration, call Vector_iter_reset()
- * then, call in a loop until the return value is false
- * the element of the iteration is shallow-copied in @p elem
+ * @brief memset for @p v 's elements
  * 
  * @param v Vector
- * @param elem contains the element of this iteration
- * @return true until end of Vector is reached
+ * @param dst destination
+ * @param val value to set
+ * @param nelem number of @p v 's elements
  */
-bool Vector_iter(Vector *v, void *elem);
+inline void Vector_memset(Vector *v, void *dst, int val, size_t nelem) {
+    memset(dst, val, nelem * v->szof);
+}
 
 /**
- * @brief reset iterator
+ * @brief memcpy for @p v 's elements
+ * 
+ * @param v Vector
+ * @param dst destination
+ * @param src source
+ * @param nelem number of @p v 's elements
  */
-#define Vector_iter_reset() Vector_iter(NULL, NULL)
+inline void Vector_memcpy(Vector *v, void *dst, void *src, size_t nelem) {
+    memcpy(dst, src, nelem * v->szof);
+}
+
+/**
+ * @brief memmove for @p v 's elements
+ * 
+ * @param v Vector
+ * @param dst destination
+ * @param src source
+ * @param nelem number of @p v 's elements
+ */
+inline void Vector_memmove(Vector *v, void *dst, void *src, size_t nelem) {
+    memmove(dst, src, nelem * v->szof);
+}
+
+/**
+ * @brief memcmp for @p v 's elements
+ * 
+ * @param v Vector
+ * @param ptr1 pointer 1
+ * @param ptr2 pointer 2
+ * @param nelem number of @p v 's elements
+ */
+inline int Vector_memcmp(Vector *v, void *ptr1, void *ptr2, size_t nelem) {
+    return memcmp(ptr1, ptr2, nelem * v->szof);
+}
 
 #endif /* __VECTOR_H__ */
