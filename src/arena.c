@@ -1,11 +1,12 @@
-#include <stdlib.h>
-#include "arena_allocator.h"
+#include "arena.h"
 
-void ArenaAllocator_init(ArenaAllocator *arena) {
+#include <stdlib.h>
+
+void arena_init(Arena *arena) {
     arena->head = NULL;
 }
 
-void *ArenaAllocator_alloc(ArenaAllocator *arena, size_t bytes) {
+void *arena_alloc(Arena *arena, size_t bytes) {
     ArenaNode *next;
 
     next = (ArenaNode *)malloc(sizeof(ArenaNode) + bytes);
@@ -18,11 +19,7 @@ void *ArenaAllocator_alloc(ArenaAllocator *arena, size_t bytes) {
     return ((char *)next) + sizeof(ArenaNode);
 }
 
-void *ArenaAllocator_realloc(
-    ArenaAllocator *arena,
-    size_t bytes,
-    void *prev_allocation
-) {
+void *arena_realloc(Arena *arena, size_t bytes, void *prev_allocation) {
     if (arena->head) {
         ArenaNode *curr, *prev, *needle;
 
@@ -54,10 +51,10 @@ void *ArenaAllocator_realloc(
     return NULL;
 }
 
-void ArenaAllocator_free(ArenaAllocator *arena) {
+void arena_free(Arena *arena) {
     if (arena->head) {
         ArenaNode *curr, *next;
-        
+
         curr = arena->head;
         next = curr->next;
         while (next) {

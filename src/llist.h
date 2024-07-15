@@ -1,9 +1,9 @@
 /**
- * @file linkedlist.h
+ * @file llist.h
  */
 
-#ifndef __LINKEDLIST_H__
-#define __LINKEDLIST_H__
+#ifndef __LLIST_H__
+#define __LLIST_H__
 
 #include <stdbool.h>
 
@@ -23,17 +23,17 @@ typedef void (*Func_Free)(void *);
 /**
  * @brief linked list
  */
-typedef struct LinkedList {
+typedef struct LList {
     LLNode *head;     /**< beginning of the list */
     LLNode *tail;     /**< end of the list */
-} LinkedList;
+} LList;
 
 /**
  * @brief initialize the list
  *
  * @param list linked list
  */
-void LinkedList_init(LinkedList *list);
+void llist_init(LList *list);
 
 /**
  * @brief free the list
@@ -43,7 +43,7 @@ void LinkedList_init(LinkedList *list);
  * @param list linked list
  * @param func_free callback to free the nodes's data
  */
-void LinkedList_free(LinkedList *list, Func_Free func_free);
+void llist_free(LList *list, Func_Free func_free);
 
 /**
  * @brief return the node after @p curr
@@ -54,7 +54,7 @@ void LinkedList_free(LinkedList *list, Func_Free func_free);
  * @param curr current node
  * @return the next node
  */
-LLNode *LinkedList_next(LinkedList *list, LLNode *curr);
+LLNode *llist_next(LList *list, LLNode *curr);
 
 /**
  * @brief return the node before @p curr
@@ -65,7 +65,7 @@ LLNode *LinkedList_next(LinkedList *list, LLNode *curr);
  * @param curr current node
  * @return the previous node
  */
-LLNode *LinkedList_prev(LinkedList *list, LLNode *curr);
+LLNode *llist_prev(LList *list, LLNode *curr);
 
 /**
  * @brief insert node at the end of the list
@@ -74,7 +74,7 @@ LLNode *LinkedList_prev(LinkedList *list, LLNode *curr);
  * @param data node's data
  * @return the node inserted
  */
-LLNode *LinkedList_push_back(LinkedList *list, void *data);
+LLNode *llist_push_back(LList *list, void *data);
 
 /**
  * @brief insert node at the beginning of the list
@@ -83,7 +83,7 @@ LLNode *LinkedList_push_back(LinkedList *list, void *data);
  * @param data node's data
  * @return the node inserted
  */
-LLNode *LinkedList_push_front(LinkedList *list, void *data);
+LLNode *llist_push_front(LList *list, void *data);
 
 /**
  * @brief insert node after @p prev
@@ -95,7 +95,7 @@ LLNode *LinkedList_push_front(LinkedList *list, void *data);
  * @param data node's data
  * @return the node inserted
  */
-LLNode *LinkedList_insert(LinkedList *list, LLNode *prev, void *data);
+LLNode *llist_insert(LList *list, LLNode *prev, void *data);
 
 /**
  * @brief remove node from the end of the list
@@ -103,7 +103,7 @@ LLNode *LinkedList_insert(LinkedList *list, LLNode *prev, void *data);
  * @param list linked list
  * @return the node's data
  */
-void *LinkedList_pop_back(LinkedList *list);
+void *llist_pop_back(LList *list);
 
 /**
  * @brief remove node from the beginning of the list
@@ -111,7 +111,7 @@ void *LinkedList_pop_back(LinkedList *list);
  * @param list linked list
  * @return the node's data
  */
-void *LinkedList_pop_front(LinkedList *list);
+void *llist_pop_front(LList *list);
 
 /**
  * @brief remove @p node from the list
@@ -119,7 +119,7 @@ void *LinkedList_pop_front(LinkedList *list);
  * @param list linked list
  * @return the node's data
  */
-void *LinkedList_remove(LinkedList *list, LLNode *node);
+void *llist_remove(LList *list, LLNode *node);
 
 /**
  * @brief if the list contains data
@@ -127,8 +127,8 @@ void *LinkedList_remove(LinkedList *list, LLNode *node);
  * @param list linked list
  * @return boolean
  */
-inline bool LinkedList_is_empty(LinkedList *list) {
+inline bool llist_is_empty(LList *list) {
     return list->head == (void *)0;
 }
 
-#endif /* __LINKEDLIST_H__ */
+#endif /* __LLIST_H__ */
