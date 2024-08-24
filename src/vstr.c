@@ -129,7 +129,7 @@ void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
 
         vstr_reserve(dest, new_len);
         memmove(&dest->ptr[pos + num], &dest->ptr[pos], dest->len - pos);
-        memcpy(&dest->ptr[pos], source, num);
+        memmove(&dest->ptr[pos], source, num);
         dest->ptr[new_len] = '\0';
         dest->len = new_len;
     }
