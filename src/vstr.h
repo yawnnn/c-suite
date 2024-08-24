@@ -13,8 +13,8 @@
  */
 typedef struct Vstr {
     char *ptr; /**< underlying c-style string (access through vstr_data()) */
-    size_t cap; /**< capacity allocated */
     size_t len; /**< length of the Vstr */
+    size_t cap; /**< capacity allocated */
 } Vstr;
 
 /**
@@ -52,16 +52,14 @@ void vstr_from(Vstr *s, const char *source);
 void vstr_free(Vstr *s);
 
 /**
- * @brief empty the string but don't free the memory, so it can be reused
+ * @brief shorten the Vstr to the specified length
  *
+ * if @p new_len is >= that the current length, this has no effect
+ * 
  * @param s Vstr
+ * @param new_len new length
  */
-inline void vstr_truncate(Vstr *s) {
-    if (s->len) {
-        *s->ptr = '\0';
-        s->len = 0;
-    }
-}
+void vstr_truncate(Vstr *s, size_t new_len);
 
 /**
  * @brief reserve memory ahead of time
@@ -143,15 +141,16 @@ char *vstr_cat(Vstr *dest, const char *source);
 char *vstr_ncat(Vstr *dest, const char *source, size_t num);
 
 /**
- * @brief merge two Vstr
+ * @brief insert characters from c-style string in Vstr at position, shifting the remaining ones
+ * 
+ * if @p pos is > than the current length, this has no effect
  *
- * merge @p source into @p dest with c-style string @p sep in between. consumes @p source
- *
- * @param dest Vstr dest
- * @param source Vstr source
- * @return the underlying c-style string of @p dest
+ * @param dest Vstr
+ * @param pos start position inside @p dest
+ * @param source source c-style string
+ * @param num max numbers of characters to copy
  */
-char *vstr_merge(Vstr *dest, Vstr *source, const char *sep);
+void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num);
 
 /**
  * @brief if Vstr is empty
