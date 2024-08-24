@@ -10,7 +10,7 @@
 #include <string.h>
 
 /**
- * @brief dynamic array
+ * @brief variable length array
  */
 typedef struct Vec {
     void *ptr; /**< underlying data (if needed, access through vec_data()) */

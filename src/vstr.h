@@ -1,62 +1,62 @@
 /**
- * @file sstr.h
+ * @file vstr.h
  */
 
-#ifndef __SSTR_H__
-#define __SSTR_H__
+#ifndef __VSTR_H__
+#define __VSTR_H__
 
 #include <stdbool.h>
 #include <stdlib.h>
 
 /**
- * @brief Dynamic string
+ * @brief variable length string
  */
-typedef struct SStr {
-    char *ptr;  /**< underlying c-style string (access through sstr_data()) */
+typedef struct Vstr {
+    char *ptr; /**< underlying c-style string (access through vstr_data()) */
     size_t cap; /**< capacity allocated */
-    size_t len; /**< length of the SStr */
-} SStr;
+    size_t len; /**< length of the Vstr */
+} Vstr;
 
 /**
- * @brief new SStr
+ * @brief new Vstr
  *
- * the SStr is not allocated, therefore sstr_data() returns NULL
+ * the Vstr is not allocated, therefore vstr_data() returns NULL
  *
- * @param s SStr
+ * @param s Vstr
  */
-void sstr_new(SStr *s);
+void vstr_new(Vstr *s);
 
 /**
- * @brief new SStr with reserved space
+ * @brief new Vstr with reserved space
  *
- * the SStr has 0 length but is allocated, therefore sstr_data() is valid
+ * the Vstr has 0 length but is allocated, therefore vstr_data() is valid
  *
- * @param s SStr
+ * @param s Vstr
  * @param len minimum number of characters to reserve memory for
  */
-void sstr_new_with(SStr *s, size_t len);
+void vstr_new_with(Vstr *s, size_t len);
 
 /**
- * @brief new SStr from c-style string
+ * @brief new Vstr from c-style string
  *
- * @param s SStr
+ * @param s Vstr
  * @param source source c-style string
  */
-void sstr_from(SStr *s, const char *source);
+void vstr_from(Vstr *s, const char *source);
 
 /**
  * @brief release memory
  *
- * @param s SStr
+ * @param s Vstr
  */
-void sstr_free(SStr *s);
+void vstr_free(Vstr *s);
 
 /**
  * @brief empty the string but don't free the memory, so it can be reused
  *
- * @param s SStr
+ * @param s Vstr
  */
-inline void sstr_truncate(SStr *s) {
+inline void vstr_truncate(Vstr *s) {
     if (s->len) {
         *s->ptr = '\0';
         s->len = 0;
@@ -66,25 +66,25 @@ inline void sstr_truncate(SStr *s) {
 /**
  * @brief reserve memory ahead of time
  *
- * @param s SStr
+ * @param s Vstr
  * @param len minimum number of characters to reserve memory for
  */
-void sstr_reserve(SStr *s, size_t len);
+void vstr_reserve(Vstr *s, size_t len);
 
 /**
  * @brief shrink allocated memory to what is exactly needed for length
  *
- * @param s SStr
+ * @param s Vstr
  */
-void sstr_shrink_to_fit(SStr *s);
+void vstr_shrink_to_fit(Vstr *s);
 
 /**
  * @brief return the underlying c-style string, or NULL
  *
- * @param s SStr
+ * @param s Vstr
  * @return c-style string or NULL
  */
-inline char *sstr_data(SStr *s) {
+inline char *vstr_data(Vstr *s) {
     if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
         return s->ptr;
     return NULL;
@@ -93,11 +93,11 @@ inline char *sstr_data(SStr *s) {
 /**
  * @brief return the underlying c-style string starting at @p pos, or NULL
  *
- * @param s SStr
+ * @param s Vstr
  * @param pos start position
  * @return c-style string or NULL
  */
-inline char *sstr_data_from(SStr *s, size_t pos) {
+inline char *vstr_data_from(Vstr *s, size_t pos) {
     // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
     if (pos <= s->len && s->cap)
         return s->ptr + pos;
@@ -105,62 +105,62 @@ inline char *sstr_data_from(SStr *s, size_t pos) {
 }
 
 /**
- * @brief strcpy for SStr
+ * @brief strcpy for Vstr
  *
- * @param dest SStr
+ * @param dest Vstr
  * @param source source c-style string
  * @return the underlying c-style string of @p dest
  */
-char *sstr_cpy(SStr *dest, const char *source);
+char *vstr_cpy(Vstr *dest, const char *source);
 
 /**
- * @brief strncpy for SStr
+ * @brief strncpy for Vstr
  *
- * @param dest SStr
+ * @param dest Vstr
  * @param source source c-style string
  * @param num max number of characters to copy
  * @return the underlying c-style string of @p dest
  */
-char *sstr_ncpy(SStr *dest, const char *source, size_t num);
+char *vstr_ncpy(Vstr *dest, const char *source, size_t num);
 
 /**
- * @brief strcat for SStr
+ * @brief strcat for Vstr
  *
- * @param dest SStr
+ * @param dest Vstr
  * @param source source c-style string
  * @return the underlying c-style string of @p dest
  */
-char *sstr_cat(SStr *dest, const char *source);
+char *vstr_cat(Vstr *dest, const char *source);
 
 /**
- * @brief strncat for SStr
+ * @brief strncat for Vstr
  *
- * @param dest SStr
+ * @param dest Vstr
  * @param source source c-style string
  * @param num max number of characters to concat
  * @return the underlying c-style string of @p dest
  */
-char *sstr_ncat(SStr *dest, const char *source, size_t num);
+char *vstr_ncat(Vstr *dest, const char *source, size_t num);
 
 /**
- * @brief merge two SStr
+ * @brief merge two Vstr
  *
  * merge @p source into @p dest with c-style string @p sep in between. consumes @p source
  *
- * @param dest SStr dest
- * @param source SStr source
+ * @param dest Vstr dest
+ * @param source Vstr source
  * @return the underlying c-style string of @p dest
  */
-char *sstr_merge(SStr *dest, SStr *source, const char *sep);
+char *vstr_merge(Vstr *dest, Vstr *source, const char *sep);
 
 /**
- * @brief if SStr is empty
+ * @brief if Vstr is empty
  *
- * @param s SStr
+ * @param s Vstr
  * @return boolean
  */
-inline bool sstr_is_empty(SStr *s) {
+inline bool vstr_is_empty(Vstr *s) {
     return s->len == 0;
 }
 
-#endif /* __SSTR_H__ */
+#endif /* __VSTR_H__ */

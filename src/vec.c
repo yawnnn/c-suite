@@ -5,15 +5,35 @@
 
 #define GROWTH_FACTOR (2UL)
 
+/**
+ * @brief pointer to the element of @p v at @p pos, without checking the validity of the address.
+ * 
+ * @param v Vec
+ * @param pos position of the element
+ * 
+ * @return the pointer
+ */
 static inline char *vec_ptr(Vec *v, size_t pos) {
     return ((char *)v->ptr) + (pos * v->szof);
 }
 
+/**
+ * @brief alloc Vec.
+ * 
+ * @param v Vec
+ * @param nelem number of elements requested
+ */
 static inline void vec_alloc(Vec *v, size_t nelem) {
     v->ptr = malloc(nelem * v->szof);
     v->cap = nelem;
 }
 
+/**
+ * @brief realloc Vec.
+ * 
+ * @param v Vec
+ * @param nelem number of elements requested
+ */
 static inline void vec_realloc(Vec *v, size_t nelem) {
     v->ptr = realloc(v->ptr, nelem * v->szof);
     v->cap = nelem;
