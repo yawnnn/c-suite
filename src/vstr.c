@@ -1,7 +1,7 @@
+#include "vstr.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-#include "vstr.h"
 
 #define GROWTH_FACTOR (2UL)
 
@@ -70,6 +70,13 @@ void vstr_free(Vstr *s) {
     s->len = 0;
 }
 
+void vstr_truncate(Vstr *s, size_t new_len) {
+    if (new_len < s->len) {
+        s->len = new_len;
+        s->ptr[new_len] = '\0';
+    }
+}
+
 void vstr_reserve(Vstr *s, size_t len) {
     if (len + 1 > s->cap)
         vstr_resize(s, len + 1);
@@ -81,44 +88,49 @@ void vstr_shrink_to_fit(Vstr *s) {
 }
 
 char *vstr_cpy(Vstr *dest, const char *source) {
-    dest->len = strlen(source);
-    vstr_reserve(dest, dest->len);
-    return strcpy(dest->ptr, source);
+    vstr_truncate(dest, 0);
+    vstr_insert(dest, 0, source, strlen(source));
+
+    return dest->ptr;
 }
 
 char *vstr_ncpy(Vstr *dest, const char *source, size_t num) {
-    dest->len = strlen(source);
-    if (dest->len > num)
-        dest->len = num;
-    vstr_reserve(dest, dest->len);
-    dest->ptr[dest->len] = '\0';
-    return strncpy(dest->ptr, source, dest->len);
+    size_t src_len;
+
+    src_len = strlen(source);
+    if (src_len < num)
+        num = src_len;
+    vstr_truncate(dest, 0);
+    vstr_insert(dest, 0, source, num);
+
+    return dest->ptr;
 }
 
 char *vstr_cat(Vstr *dest, const char *source) {
-    dest->len += strlen(source);
-    vstr_reserve(dest, dest->len);
-    return strcat(dest->ptr, source);
+    vstr_insert(dest, dest->len, source, strlen(source));
+
+    return dest->ptr;
 }
 
 char *vstr_ncat(Vstr *dest, const char *source, size_t num) {
-    size_t len_src;
+    size_t src_len;
 
-    len_src = strlen(source);
-    if (len_src < num)
-        num = len_src;
-    dest->len += num;
-    vstr_reserve(dest, dest->len);
-    dest->ptr[dest->len] = '\0';
-    return strncat(dest->ptr, source, num);
+    src_len = strlen(source);
+    if (src_len < num)
+        num = src_len;
+    vstr_insert(dest, dest->len, source, num);
+
+    return dest->ptr;
 }
 
-char *vstr_merge(Vstr *dest, Vstr *source, const char *sep) {
-    if (source->len) {
-        dest->len += source->len + strlen(sep);
-        vstr_reserve(dest, dest->len);
-        strcat(strcat(dest->ptr, sep), source->ptr);
+void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
+    if (pos <= dest->len) {
+        size_t new_len = dest->len + num;
+
+        vstr_reserve(dest, new_len);
+        memmove(&dest->ptr[pos + num], &dest->ptr[pos], dest->len - pos);
+        memcpy(&dest->ptr[pos], source, num);
+        dest->ptr[new_len] = '\0';
+        dest->len = new_len;
     }
-    vstr_free(source);
-    return dest->ptr;
 }

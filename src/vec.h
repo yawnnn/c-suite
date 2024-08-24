@@ -14,9 +14,9 @@
  */
 typedef struct Vec {
     void *ptr; /**< underlying data (if needed, access through vec_data()) */
-    size_t cap; /**< number of elements for which there is space allocated */
     size_t len; /**< number of usable elements */
     size_t szof; /**< sizeof() of the data type to be held */
+    size_t cap; /**< number of elements for which there is space allocated */
 } Vec;
 
 /**
@@ -74,13 +74,14 @@ void vec_from(Vec *v, size_t szof, void *arr, size_t nelem);
 void vec_free(Vec *v);
 
 /**
- * @brief empty the Vec but don't free the memory, so it can be reused
+ * @brief shorten the Vec to the specified length
  *
+ * if @p new_len is >= that the current length, this has no effect
+ * 
  * @param v Vec
+ * @param new_len new length
  */
-inline void vec_truncate(Vec *v) {
-    v->len = 0;
-}
+void vec_truncate(Vec *v, size_t new_len);
 
 /**
  * @brief reserve memory ahead of time

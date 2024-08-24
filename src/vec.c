@@ -88,6 +88,11 @@ void vec_free(Vec *v) {
     v->len = 0;
 }
 
+void vec_truncate(Vec *v, size_t new_len) {
+    if (new_len < v->len)
+        v->len = new_len;
+}
+
 void vec_reserve(Vec *v, size_t nelem) {
     if (nelem > v->cap)
         vec_resize(v, nelem);
