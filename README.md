@@ -1,4 +1,12 @@
-# C Collections
-Implementation of data structures in C
+# C Suite
+A bunch of useful stuff for C codebases
 
-To clarify, these are build to be realistically used in an old C codebase, and are tuned accordingly
+## Collections
+- [x] variable length array
+- [x] variable length string
+- [x] linked list
+- [ ] hashmap/hashset
+
+## Allocators
+- [ ] arena allocator
+- [ ] fixed buffer allocator
