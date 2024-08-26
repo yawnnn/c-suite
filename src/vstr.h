@@ -22,7 +22,7 @@ typedef struct Vstr {
  *
  * the Vstr is not allocated, therefore vstr_data() returns NULL
  *
- * @param s Vstr
+ * @param[out] s Vstr
  */
 void vstr_new(Vstr *s);
 
@@ -31,23 +31,23 @@ void vstr_new(Vstr *s);
  *
  * the Vstr has 0 length but is allocated, therefore vstr_data() is valid
  *
- * @param s Vstr
- * @param len minimum number of characters to reserve memory for
+ * @param[out] s Vstr
+ * @param[in] len minimum number of characters to reserve memory for
  */
 void vstr_new_with(Vstr *s, size_t len);
 
 /**
  * @brief new Vstr from c-style string
  *
- * @param s Vstr
- * @param source source c-style string
+ * @param[out] s Vstr
+ * @param[in] source source c-style string
  */
 void vstr_from(Vstr *s, const char *source);
 
 /**
  * @brief release memory
  *
- * @param s Vstr
+ * @param[in,out] s Vstr
  */
 void vstr_free(Vstr *s);
 
@@ -56,30 +56,30 @@ void vstr_free(Vstr *s);
  *
  * if @p new_len is >= that the current length, this has no effect
  * 
- * @param s Vstr
- * @param new_len new length
+ * @param[in,out] s Vstr
+ * @param[in] new_len new length
  */
 void vstr_truncate(Vstr *s, size_t new_len);
 
 /**
  * @brief reserve memory ahead of time
  *
- * @param s Vstr
- * @param len minimum number of characters to reserve memory for
+ * @param[in,out] s Vstr
+ * @param[in] len minimum number of characters to reserve memory for
  */
 void vstr_reserve(Vstr *s, size_t len);
 
 /**
  * @brief shrink allocated memory to what is exactly needed for length
  *
- * @param s Vstr
+ * @param[in,out] s Vstr
  */
 void vstr_shrink_to_fit(Vstr *s);
 
 /**
  * @brief return the underlying c-style string, or NULL
  *
- * @param s Vstr
+ * @param[in] s Vstr
  * @return c-style string or NULL
  */
 inline char *vstr_data(Vstr *s) {
@@ -91,8 +91,8 @@ inline char *vstr_data(Vstr *s) {
 /**
  * @brief return the underlying c-style string starting at @p pos, or NULL
  *
- * @param s Vstr
- * @param pos start position
+ * @param[in] s Vstr
+ * @param[in] pos start position
  * @return c-style string or NULL
  */
 inline char *vstr_data_from(Vstr *s, size_t pos) {
@@ -103,10 +103,22 @@ inline char *vstr_data_from(Vstr *s, size_t pos) {
 }
 
 /**
+ * @brief insert characters from c-style string in Vstr at position, shifting the remaining ones
+ * 
+ * if @p pos is > than the current length, this has no effect
+ *
+ * @param[in,out] dest Vstr
+ * @param[in] pos start position inside @p dest
+ * @param[in] source source c-style string
+ * @param[in] num max numbers of characters to copy
+ */
+void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num);
+
+/**
  * @brief strcpy for Vstr
  *
- * @param dest Vstr
- * @param source source c-style string
+ * @param[in,out] dest Vstr
+ * @param[in] source source c-style string
  * @return the underlying c-style string of @p dest
  */
 char *vstr_cpy(Vstr *dest, const char *source);
@@ -114,9 +126,9 @@ char *vstr_cpy(Vstr *dest, const char *source);
 /**
  * @brief strncpy for Vstr
  *
- * @param dest Vstr
- * @param source source c-style string
- * @param num max number of characters to copy
+ * @param[in,out] dest Vstr
+ * @param[in] source source c-style string
+ * @param[in] num max number of characters to copy
  * @return the underlying c-style string of @p dest
  */
 char *vstr_ncpy(Vstr *dest, const char *source, size_t num);
@@ -124,8 +136,8 @@ char *vstr_ncpy(Vstr *dest, const char *source, size_t num);
 /**
  * @brief strcat for Vstr
  *
- * @param dest Vstr
- * @param source source c-style string
+ * @param[in,out] dest Vstr
+ * @param[in] source source c-style string
  * @return the underlying c-style string of @p dest
  */
 char *vstr_cat(Vstr *dest, const char *source);
@@ -133,29 +145,17 @@ char *vstr_cat(Vstr *dest, const char *source);
 /**
  * @brief strncat for Vstr
  *
- * @param dest Vstr
- * @param source source c-style string
- * @param num max number of characters to concat
+ * @param[in,out] dest Vstr
+ * @param[in] source source c-style string
+ * @param[in] num max number of characters to concat
  * @return the underlying c-style string of @p dest
  */
 char *vstr_ncat(Vstr *dest, const char *source, size_t num);
 
 /**
- * @brief insert characters from c-style string in Vstr at position, shifting the remaining ones
- * 
- * if @p pos is > than the current length, this has no effect
- *
- * @param dest Vstr
- * @param pos start position inside @p dest
- * @param source source c-style string
- * @param num max numbers of characters to copy
- */
-void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num);
-
-/**
  * @brief if Vstr is empty
  *
- * @param s Vstr
+ * @param[in] s Vstr
  * @return boolean
  */
 inline bool vstr_is_empty(Vstr *s) {

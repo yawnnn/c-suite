@@ -84,6 +84,18 @@ void vstr_shrink_to_fit(Vstr *s) {
         vstr_resize(s, s->len + 1);
 }
 
+void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
+    if (pos <= dest->len) {
+        size_t new_len = dest->len + num;
+
+        vstr_reserve(dest, new_len);
+        memmove(&dest->ptr[pos + num], &dest->ptr[pos], dest->len - pos);
+        memcpy(&dest->ptr[pos], source, num);
+        dest->ptr[new_len] = '\0';
+        dest->len = new_len;
+    }
+}
+
 char *vstr_cpy(Vstr *dest, const char *source) {
     vstr_truncate(dest, 0);
     vstr_insert(dest, 0, source, strlen(source));
@@ -118,16 +130,4 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num) {
     vstr_insert(dest, dest->len, source, num);
 
     return dest->ptr;
-}
-
-void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
-    if (pos <= dest->len) {
-        size_t new_len = dest->len + num;
-
-        vstr_reserve(dest, new_len);
-        memmove(&dest->ptr[pos + num], &dest->ptr[pos], dest->len - pos);
-        memcpy(&dest->ptr[pos], source, num);
-        dest->ptr[new_len] = '\0';
-        dest->len = new_len;
-    }
 }
