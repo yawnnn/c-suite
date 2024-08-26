@@ -2,6 +2,12 @@
 
 #include <stdlib.h>
 
+/**
+ * @brief create new node
+ * 
+ * @param[in] data node's data
+ * @return node created
+ */
 static LLNode *llnode_new(void *data) {
     LLNode *node;
 
@@ -12,6 +18,12 @@ static LLNode *llnode_new(void *data) {
     return node;
 }
 
+/**
+ * @brief free the node
+ * 
+ * @param[in,out] node linked list node
+ * @param func_free callback to free the nodes's data
+ */
 static inline void llnode_free(LLNode *node, Func_Free func_free) {
     if (func_free)
         func_free(node->data);

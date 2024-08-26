@@ -32,7 +32,7 @@ typedef struct LList {
 /**
  * @brief initialize the list
  *
- * @param list linked list
+ * @param[out] list linked list
  */
 void llist_init(LList *list);
 
@@ -41,8 +41,8 @@ void llist_init(LList *list);
  * 
  * won't free the nodes's data, only the list, if @p func_free is NULL
  * 
- * @param list linked list
- * @param func_free callback to free the nodes's data
+ * @param[in,out] list linked list
+ * @param[in] func_free callback to free the nodes's data
  */
 void llist_free(LList *list, Func_Free func_free);
 
@@ -51,8 +51,8 @@ void llist_free(LList *list, Func_Free func_free);
  *
  * if @p curr == NULL, returns the first node
  * 
- * @param list linked list
- * @param curr current node
+ * @param[in] list linked list
+ * @param[in] curr current node
  * @return the next node
  */
 LLNode *llist_next(LList *list, LLNode *curr);
@@ -62,8 +62,8 @@ LLNode *llist_next(LList *list, LLNode *curr);
  *
  * if @p curr == NULL, returns the last node
  * 
- * @param list linked list
- * @param curr current node
+ * @param[in] list linked list
+ * @param[in] curr current node
  * @return the previous node
  */
 LLNode *llist_prev(LList *list, LLNode *curr);
@@ -71,8 +71,8 @@ LLNode *llist_prev(LList *list, LLNode *curr);
 /**
  * @brief insert node at the end of the list
  *
- * @param list linked list
- * @param data node's data
+ * @param[in,out] list linked list
+ * @param[in] data node's data
  * @return the node inserted
  */
 LLNode *llist_push_back(LList *list, void *data);
@@ -80,8 +80,8 @@ LLNode *llist_push_back(LList *list, void *data);
 /**
  * @brief insert node at the beginning of the list
  *
- * @param list linked list
- * @param data node's data
+ * @param[in,out] list linked list
+ * @param[in] data node's data
  * @return the node inserted
  */
 LLNode *llist_push_front(LList *list, void *data);
@@ -91,9 +91,9 @@ LLNode *llist_push_front(LList *list, void *data);
  * 
  * if @p prev is NULL, insert at the beginning of the list
  *
- * @param list linked list
- * @param prev node before the one to be inserted
- * @param data node's data
+ * @param[in,out] list linked list
+ * @param[in] prev node before the one to be inserted
+ * @param[in] data node's data
  * @return the node inserted
  */
 LLNode *llist_insert(LList *list, LLNode *prev, void *data);
@@ -101,7 +101,7 @@ LLNode *llist_insert(LList *list, LLNode *prev, void *data);
 /**
  * @brief remove node from the end of the list
  *
- * @param list linked list
+ * @param[in,out] list linked list
  * @return the node's data
  */
 void *llist_pop_back(LList *list);
@@ -109,7 +109,7 @@ void *llist_pop_back(LList *list);
 /**
  * @brief remove node from the beginning of the list
  *
- * @param list linked list
+ * @param[in,out] list linked list
  * @return the node's data
  */
 void *llist_pop_front(LList *list);
@@ -117,7 +117,7 @@ void *llist_pop_front(LList *list);
 /**
  * @brief remove @p node from the list
  *
- * @param list linked list
+ * @param[in,out] list linked list
  * @return the node's data
  */
 void *llist_remove(LList *list, LLNode *node);
@@ -125,7 +125,7 @@ void *llist_remove(LList *list, LLNode *node);
 /**
  * @brief check if list is empty
  *
- * @param list linked list
+ * @param[in] list linked list
  * @return boolean
  */
 inline bool llist_is_empty(LList *list) {
