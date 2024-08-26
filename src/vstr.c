@@ -1,8 +1,5 @@
 #include "vstr.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 #define GROWTH_FACTOR (2UL)
 
 /**
@@ -129,7 +126,7 @@ void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
 
         vstr_reserve(dest, new_len);
         memmove(&dest->ptr[pos + num], &dest->ptr[pos], dest->len - pos);
-        memmove(&dest->ptr[pos], source, num);
+        memcpy(&dest->ptr[pos], source, num);
         dest->ptr[new_len] = '\0';
         dest->len = new_len;
     }

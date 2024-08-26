@@ -1,8 +1,5 @@
 #include "vec.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 #define GROWTH_FACTOR (2UL)
 
 /**
@@ -121,7 +118,7 @@ void vec_insert_n(Vec *v, void *elems, size_t nelem, size_t pos) {
     if (pos <= v->len) {
         vec_reserve(v, v->len + nelem);
         vec_memmove(v, vec_ptr(v, pos + nelem), vec_ptr(v, pos), v->len - pos);
-        vec_memmove(v, vec_ptr(v, pos), elems, nelem);
+        vec_memcpy(v, vec_ptr(v, pos), elems, nelem);
         v->len += nelem;
     }
 }
