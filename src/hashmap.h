@@ -9,24 +9,24 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-typedef struct HashValue {
+typedef struct HashNode {
     uint64_t hash;
     void *key;
     void *value;
-} HashValue;
-
-typedef struct HashNode {
-    HashValue value;
-    struct HashNode *next;
 } HashNode;
+
+typedef struct HashEntry {
+    HashNode node;
+    struct HashEntry *next;
+} HashEntry;
 
 /**
  * @brief hashmap
  */
 typedef struct HashMap {
-    HashNode *items;
+    HashEntry *items;
     size_t nitem;
-    HashNode **buckets;
+    HashEntry **buckets;
     size_t nbucket;
 } HashMap;
 

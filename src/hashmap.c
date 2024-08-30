@@ -4,8 +4,8 @@ static uint64_t make_hash(void *key) {
     return (uint64_t)key;
 }
 
-static void hashmap_free_node(HashNode *hmnode) {
-    free(hmnode);
+static inline void hashmap_free_entry(HashEntry *entry) {
+    free(entry);
 }
 
 void hashmap_new(HashMap *hm) {
@@ -17,7 +17,7 @@ void hashmap_free(HashMap *hm) {
         free(hm->buckets);
 
     if (hm->items) {
-        HashNode *curr, *next;
+        HashEntry *curr, *next;
 
         curr = hm->items;
         next = curr->next;
@@ -32,7 +32,7 @@ void hashmap_free(HashMap *hm) {
     }
 }
 
-static inline HashNode *hashmap_get_bucket(HashMap *hm, uint64_t hash) {
+static inline HashEntry *hashmap_get_bucket(HashMap *hm, uint64_t hash) {
     size_t pos;
 
     if (!hm->nbucket)
@@ -43,34 +43,34 @@ static inline HashNode *hashmap_get_bucket(HashMap *hm, uint64_t hash) {
     return hm->buckets[pos];
 }
 
-static HashNode *hashmap_new_bucket(HashMap *hm) {
-    HashNode **pbucket;
+static HashEntry *hashmap_new_bucket(HashMap *hm) {
+    HashEntry *bucket;
 
     if (hm->nbucket++)
-        hm->buckets = realloc(hm->buckets, hm->nbucket * sizeof(HashNode *));
+        hm->buckets = realloc(hm->buckets, hm->nbucket * sizeof(HashEntry *));
     else
-        hm->buckets = malloc(hm->nbucket * sizeof(HashNode *));
+        hm->buckets = malloc(hm->nbucket * sizeof(HashEntry *));
 
-    pbucket = &hm->buckets[hm->nbucket - 1];
-    *pbucket = calloc(1, sizeof(HashNode));
+    bucket = calloc(1, sizeof(HashEntry));
+    hm->buckets[hm->nbucket - 1] = bucket;
 
-    return *pbucket;
+    return bucket;
 }
 
-static HashNode *hashmap_new_node(HashMap *hm, HashNode *bucket)
+static HashEntry *hashmap_new_entry(HashMap *hm, HashEntry *bucket)
 {
-    HashNode *node;
+    HashEntry *entry;
 
-    node = calloc(1, sizeof(HashNode));
-    node->next = bucket->next;
-    bucket->next = node;
+    entry = calloc(1, sizeof(HashEntry));
+    entry->next = bucket->next;
+    bucket->next = entry;
 
-    return node;
+    return entry;
 }
 
 void hashmap_insert(HashMap *hm, void *key, void *value) {
     uint64_t hash;
-    HashNode *bucket, *node;
+    HashEntry *bucket, *entry;
 
     hash = make_hash(key);
     bucket = hashmap_get_bucket(hm, hash);
@@ -78,17 +78,17 @@ void hashmap_insert(HashMap *hm, void *key, void *value) {
     if (!bucket)
         bucket = hashmap_new_bucket(hm);
 
-    node = bucket->next;
-    while (node && hash != node->value.hash)
-        node = node->next;
+    entry = bucket->next;
+    while (entry && hash != entry->node.hash)
+        entry = entry->next;
 
-    if (!node) {
-        node = hashmap_new_node(hm, bucket);
-        node->value.hash = hash;
-        node->value.key = key;
+    if (!entry) {
+        entry = hashmap_new_entry(hm, bucket);
+        entry->node.hash = hash;
+        entry->node.key = key;
     }
 
-    node->value.value = value;
+    entry->node.value = value;
 }
 
 void hashmap_remove(HashMap *hm, void *key) {
