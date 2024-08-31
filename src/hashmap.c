@@ -1,7 +1,28 @@
 #include "hashmap.h"
 
-static uint64_t make_hash(void *key) {
-    return (uint64_t)key;
+// Perl's hash function
+static hash_t hash_func_generic(const void *key, size_t size) {
+    register const uint8_t *data;
+    register size_t i;
+    register hash_t hash;
+
+    const hash_t seed = 0;
+
+    data = (const uint8_t *)key;
+    i = size;
+    hash = seed;
+
+    while (i--) {
+        hash += *data++;
+        hash += (hash << 10);
+        hash ^= (hash >> 6);
+    }
+
+    hash += (hash << 3);
+    hash ^= (hash >> 11);
+    hash += (hash << 15);
+
+    return hash;
 }
 
 static inline void hashmap_free_entry(HashEntry *entry) {
@@ -11,8 +32,7 @@ static inline void hashmap_free_entry(HashEntry *entry) {
 static void hashmap_free_entries(HashEntry *head) {
     HashEntry *curr, *next;
 
-    if (!head)
-        return;
+    if (!head) return;
 
     curr = head;
     next = curr->next;
@@ -26,11 +46,27 @@ static void hashmap_free_entries(HashEntry *head) {
     hashmap_free_entry(head);
 }
 
-static inline HashBucket *hashmap_get_bucket(HashMap *hm, uint64_t hash) {
+static void hashmap_grow(HashMap *hm) {
+    if (hm->nbucket) {
+        size_t old_nbucket = hm->nbucket;
+
+        hm->nbucket = hm->nbucket * 2;
+        hm->buckets = realloc(hm->buckets, hm->nbucket * sizeof(HashBucket));
+        memset(
+            hm->buckets + old_nbucket,
+            0,
+            (hm->nbucket - old_nbucket) * sizeof(HashBucket)
+        );
+    } else {
+        hm->nbucket = 8;
+        hm->buckets = calloc(hm->nbucket, sizeof(HashBucket));
+    }
+}
+
+static inline HashBucket *hashmap_get_bucket(HashMap *hm, hash_t hash) {
     size_t pos;
 
-    if (!hm->nbucket)
-        return NULL;
+    if (!hm->nbucket) return NULL;
 
     pos = (size_t)(hash % hm->nbucket);
 
@@ -47,28 +83,9 @@ static HashEntry *hashmap_new_entry(HashMap *hm, HashBucket *bucket) {
     return entry;
 }
 
-static HashBucket *hashmap_new_bucket(HashMap *hm) {
-    HashBucket *bucket;
-
-    if (hm->nbucket)
-        hm->buckets = realloc(hm->buckets, (hm->nbucket + 1) * sizeof(HashBucket));
-    else
-        hm->buckets = malloc(sizeof(HashBucket));
-    hm->nbucket++;
-
-    bucket = &hm->buckets[hm->nbucket - 1];
-    bucket->head = NULL;
-
-    return bucket;
-}
-
-static void *hashmap_remove_entry(HashBucket *bucket, uint64_t hash)
-{
+static void *hashmap_remove_entry(HashBucket *bucket, hash_t hash) {
     HashEntry *curr, *prev;
     void *value = NULL;
-
-    if (!bucket)
-        return;
 
     prev = NULL;
     curr = bucket->head;
@@ -90,12 +107,10 @@ static void *hashmap_remove_entry(HashBucket *bucket, uint64_t hash)
     return value;
 }
 
-static HashEntry *hashmap_find_entry(HashBucket *bucket, uint64_t hash)
-{
+static HashEntry *hashmap_find_entry(HashBucket *bucket, hash_t hash) {
     HashEntry *entry;
 
-    if (!bucket)
-        return NULL;
+    if (!bucket) return NULL;
 
     entry = bucket->head;
     while (entry && hash != entry->node.hash)
@@ -104,16 +119,21 @@ static HashEntry *hashmap_find_entry(HashBucket *bucket, uint64_t hash)
     return entry;
 }
 
-void hashmap_new(HashMap *hm) {
-    memset(hm, 0, sizeof(HashMap));
+void hashmap_new(HashMap *hm, size_t key_size, size_t value_size) {
+    hm->buckets = NULL;
+    hm->nbucket = 0;
+    hm->nitem = 0;
+
+    hm->key_size = key_size;
+
+    hm->hash_func = hash_func_generic;
 }
 
 void hashmap_free(HashMap *hm) {
     while (hm->nbucket--)
         hashmap_free_entries(hm->buckets[hm->nbucket].head);
 
-    if (hm->buckets)
-        free(hm->buckets);
+    if (hm->buckets) free(hm->buckets);
 
     memset(hm, 0, sizeof(HashMap));
 }
@@ -121,14 +141,16 @@ void hashmap_free(HashMap *hm) {
 void *hashmap_insert(HashMap *hm, void *key, void *value) {
     HashBucket *bucket;
     HashEntry *entry;
-    uint64_t hash;
+    hash_t hash;
     void *old_value = NULL;
 
-    hash = make_hash(key);
-    bucket = hashmap_get_bucket(hm, hash);
+    hash = hm->hash_func(key, hm->key_size);
 
-    if (!bucket)
-        bucket = hashmap_new_bucket(hm);
+    bucket = hashmap_get_bucket(hm, hash);
+    if (!bucket) {
+        hashmap_grow(hm);
+        bucket = hashmap_get_bucket(hm, hash);
+    }
 
     entry = hashmap_find_entry(bucket, hash);
 
@@ -148,15 +170,16 @@ void *hashmap_insert(HashMap *hm, void *key, void *value) {
 
 void *hashmap_remove(HashMap *hm, void *key) {
     HashBucket *bucket;
-    uint64_t hash;
+    hash_t hash;
     void *value;
 
-    hash = make_hash(key);
+    hash = hm->hash_func(key, hm->key_size);
+
     bucket = hashmap_get_bucket(hm, hash);
+    if (!bucket) return NULL;
+
     value = hashmap_remove_entry(bucket, hash);
-    
-    if (value)
-        hm->nitem--;
+    if (value) hm->nitem--;
 
     return value;
 }
@@ -164,10 +187,13 @@ void *hashmap_remove(HashMap *hm, void *key) {
 void *hashmap_get(HashMap *hm, void *key) {
     HashBucket *bucket;
     HashEntry *entry;
-    uint64_t hash;
+    hash_t hash;
 
-    hash = make_hash(key);
+    hash = hm->hash_func(key, hm->key_size);
+
     bucket = hashmap_get_bucket(hm, hash);
+    if (!bucket) return NULL;
+
     entry = hashmap_find_entry(bucket, hash);
 
     return entry ? entry->node.value : NULL;
