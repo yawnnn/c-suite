@@ -138,6 +138,7 @@ void *hashmap_insert(HashMap *hm, void *key, void *value) {
         entry = hashmap_new_entry(hm, bucket);
         entry->node.hash = hash;
         entry->node.key = key;
+        hm->nitem++;
     }
 
     entry->node.value = value;
@@ -148,11 +149,16 @@ void *hashmap_insert(HashMap *hm, void *key, void *value) {
 void *hashmap_remove(HashMap *hm, void *key) {
     HashBucket *bucket;
     uint64_t hash;
+    void *value;
 
     hash = make_hash(key);
     bucket = hashmap_get_bucket(hm, hash);
+    value = hashmap_remove_entry(bucket, hash);
+    
+    if (value)
+        hm->nitem--;
 
-    return hashmap_remove_entry(bucket, hash);
+    return value;
 }
 
 void *hashmap_get(HashMap *hm, void *key) {
