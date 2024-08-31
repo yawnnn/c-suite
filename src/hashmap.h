@@ -15,13 +15,10 @@ typedef struct HashNode {
     void *value;
 } HashNode;
 
-typedef struct HashEntry {
-    HashNode node;
-    struct HashEntry *next;
-} HashEntry;
-
 typedef struct HashBucket {
-    struct HashEntry *head;
+    HashNode *ptr;
+    size_t len;
+    size_t cap;
 } HashBucket;
 
 typedef uint32_t hash_t;
