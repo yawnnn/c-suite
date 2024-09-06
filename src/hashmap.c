@@ -1,12 +1,8 @@
 #include "hashmap.h"
 
 //////////////////////////////////////////////////////////////////////////////////////
-// useful functions
+// other functions
 //////////////////////////////////////////////////////////////////////////////////////
-
-static inline char *offset(void *ptr, size_t size, size_t count) {
-    return (char *)ptr + (size * count);
-}
 
 // Perl's hash function
 static hash_t hash_func_generic(const void *key, size_t size) {
@@ -34,68 +30,11 @@ static hash_t hash_func_generic(const void *key, size_t size) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
-// HashData
+// HashNode
 //////////////////////////////////////////////////////////////////////////////////////
 
-#define IDX_DATA_NULL ((size_t) - 1)
-
-static void hashdata_free(HashData *data) {
-    free(data->keys);
-    free(data->values);
-}
-
-static inline void hashdata_grow(HashMap *map, HashData *data) {
-    if (data->len == data->cap) {
-        if (data->cap) {
-            data->cap = data->cap * 2;
-            data->keys = realloc(data->keys, data->cap * map->key_size);
-            data->values = realloc(data->values, data->cap * map->value_size);
-        } else {
-            data->cap = 2;
-            data->keys = malloc(data->cap * map->key_size);
-            data->values = malloc(data->cap * map->value_size);
-        }
-    }
-}
-
-static size_t
-hashdata_push(HashMap *map, HashData *data, void *key, void *value) {
-    char *pkey, *pvalue;
-
-    hashdata_grow(map, data);
-    pkey = offset(data->keys, map->key_size, data->len);
-    memcpy(pkey, key, map->key_size);
-    pvalue = offset(data->values, map->value_size, data->len);
-    memcpy(pvalue, value, map->value_size);
-    data->len++;
-
-    return data->len - 1;
-}
-
-static inline void
-hashdata_get(HashMap *map, HashData *data, size_t pos, void *value) {
-    char *pvalue;
-
-    if (pos < data->len) {
-        pvalue = offset(data->values, map->value_size, pos);
-        memcpy(value, pvalue, map->value_size);
-    }
-}
-
-static inline void
-hashdata_set(HashMap *map, HashData *data, size_t pos, void *value) {
-    char *pvalue;
-
-    if (pos < data->len) {
-        pvalue = offset(data->values, map->value_size, pos);
-        memcpy(pvalue, value, map->value_size);
-    }
-}
-
-static void
-hashdata_remove(HashMap *map, HashData *data, size_t pos, void *value) {
-    if (value) hashdata_get(map, data, pos, value);
-    // TODO --- Uhm...
+inline static void hashnode_get(HashMap *map, HashNode *node, void *value) {
+    memcpy(value, node->value, map->value_size);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -103,11 +42,13 @@ hashdata_remove(HashMap *map, HashData *data, size_t pos, void *value) {
 //////////////////////////////////////////////////////////////////////////////////////
 
 static void hashbucket_free(HashBucket *bucket) {
+    while (bucket->len--)
+        free(bucket->ptr[bucket->len].value);
     free(bucket->ptr);
     bucket->cap = bucket->len = 0;
 }
 
-static inline void hashbucket_grow(HashBucket *bucket) {
+inline static void hashbucket_grow(HashBucket *bucket) {
     if (bucket->len == bucket->cap) {
         if (bucket->cap) {
             bucket->cap = bucket->cap * 2;
@@ -119,23 +60,36 @@ static inline void hashbucket_grow(HashBucket *bucket) {
     }
 }
 
-static void hashbucket_push(HashBucket *bucket, hash_t hash, size_t idx) {
-    hashbucket_grow(bucket);
-    bucket->ptr[bucket->len].hash = hash;
-    bucket->ptr[bucket->len].idx = idx;
-}
-
 static HashNode *hashbucket_find(HashBucket *bucket, hash_t hash) {
     HashNode *node;
 
     for (size_t i = 0; i < bucket->len; i++) {
         node = &bucket->ptr[i];
-        if (node->hash == hash && node->idx != IDX_DATA_NULL) {
+        if (node->hash == hash && node->key != NULL) {
             return node;
         }
     }
 
     return NULL;
+}
+
+static void hashbucket_push(
+    HashMap *map,
+    HashBucket *bucket,
+    hash_t hash,
+    void *key,
+    void *value
+) {
+    HashNode *node;
+
+    hashbucket_grow(bucket);
+    node = &bucket->ptr[bucket->len];
+    bucket->len++;
+
+    node->hash = hash;
+    node->key = key;
+    node->value = malloc(map->value_size);
+    memcpy(node->value, value);
 }
 
 static bool hashbucket_insert(
@@ -146,22 +100,17 @@ static bool hashbucket_insert(
     void *value,
     void *prev
 ) {
-    HashNode *node;
-    size_t idx;
-    bool found;
+    HashNode *found;
 
-    node = hashbucket_find(bucket, hash);
-    if (node) {
-        if (prev) hashdata_get(map, &map->data, node->idx, prev);
-        hashdata_set(map, &map->data, node->idx, value);
-        found = true;
-    } else {
-        idx = hashdata_push(map, &map->data, key, value);
-        hashbucket_push(bucket, hash, idx);
-        found = false;
+    found = hashbucket_find(bucket, hash);
+    if (!found)
+        hashbucket_push(map, bucket, hash, key, value);
+    else {
+        if (prev) memcpy(prev, found->value, map->value_size);
+        memcpy(found->value, value, map->value_size);
     }
 
-    return found;
+    return found != NULL;
 }
 
 static bool
@@ -171,8 +120,8 @@ hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, void *prev) {
     node = hashbucket_find(bucket, hash);
     if (!node) return false;
 
-    hashdata_remove(map, &map->data, node->idx, prev);
-    node->idx = IDX_DATA_NULL;
+    if (prev) memcpy(prev, node->value, map->value_size);
+    node->key = NULL;
 
     return true;
 }
@@ -195,13 +144,11 @@ static void hashmap_grow(HashMap *map) {
     }
 }
 
-static inline HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash) {
+inline static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash) {
     size_t pos;
 
     if (!map->nbucket) return NULL;
-
-    // should be faster than modulo
-    // possible because nbucket is always a power of 2
+    // since nbucket is always a power of 2, i don't need to use modulo
     pos = hash & (map->nbucket - 1);
 
     return &map->buckets[pos];
@@ -212,6 +159,7 @@ void hashmap_new(HashMap *map, size_t key_size, size_t value_size) {
     map->nbucket = map->nitem = 0;
 
     map->key_size = key_size;
+    map->value_size = value_size;
 
     map->hash_func = hash_func_generic;
 }
@@ -270,7 +218,7 @@ bool hashmap_get(HashMap *map, void *key, void *value) {
     node = hashbucket_find(bucket, hash);
     if (!node) return false;
 
-    hashdata_get(map, &map->data, node->idx, value);
+    hashnode_get(map, node, value);
 
     return true;
 }
