@@ -29,8 +29,8 @@ BreakStringLiterals: false
 ColumnLimit: 80
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
-ConstructorInitializerIndentWidth: 4
-ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 3
+ContinuationIndentWidth: 3
 Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 FixNamespaceComments: true
@@ -55,7 +55,7 @@ IncludeCategories:
 IncludeIsMainRegex: '([-_](test|unittest))?$'
 IndentCaseLabels: true
 IndentPPDirectives: BeforeHash
-IndentWidth: 4
+IndentWidth: 3
 IndentWrappedFunctionNames: false
 KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1
@@ -83,5 +83,5 @@ SpacesInContainerLiterals: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard: Cpp11
-TabWidth: 4
+TabWidth: 3
 UseTab: Never

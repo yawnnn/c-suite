@@ -13,10 +13,10 @@
  * @brief variable length array
  */
 typedef struct Vec {
-    void *ptr; /**< underlying data (if needed, access through vec_data()) */
-    size_t len; /**< number of usable elements */
-    size_t szof; /**< sizeof() of the data type to be held */
-    size_t cap; /**< number of elements for which there is space allocated */
+   void *ptr; /**< underlying data (if needed, access through vec_data()) */
+   size_t len; /**< number of usable elements */
+   size_t szof; /**< sizeof() of the data type to be held */
+   size_t cap; /**< number of elements for which there is space allocated */
 } Vec;
 
 /**
@@ -105,9 +105,8 @@ void vec_shrink_to_fit(Vec *v);
  * @return pointer to beginning of data
  */
 inline void *vec_data(Vec *v) {
-    if (v->len)
-        return v->ptr;
-    return NULL;
+   if (v->len) return v->ptr;
+   return NULL;
 }
 
 /**
@@ -120,9 +119,8 @@ inline void *vec_data(Vec *v) {
  * @return pointer to element
  */
 inline void *vec_elem_at(Vec *v, size_t pos) {
-    if (pos < v->len)
-        return (void *)(((char *)v->ptr) + (pos * v->szof));
-    return NULL;
+   if (pos < v->len) return (void *)(((char *)v->ptr) + (pos * v->szof));
+   return NULL;
 }
 
 /**
@@ -165,7 +163,7 @@ void vec_insert_n(Vec *v, void *elems, size_t nelem, size_t pos);
  * @param[in] pos index of the element
  */
 inline void vec_insert(Vec *v, void *elem, size_t pos) {
-    vec_insert_n(v, elem, 1, pos);
+   vec_insert_n(v, elem, 1, pos);
 }
 
 /**
@@ -177,7 +175,7 @@ inline void vec_insert(Vec *v, void *elem, size_t pos) {
  * @param[in] elem element to insert
  */
 inline void vec_push(Vec *v, void *elem) {
-    vec_insert_n(v, elem, 1, v->len);
+   vec_insert_n(v, elem, 1, v->len);
 }
 
 /**
@@ -204,7 +202,7 @@ void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
  * @param[out] elem element removed, can be NULL
  */
 inline void vec_remove(Vec *v, size_t pos, void *elem) {
-    vec_remove_n(v, pos, elem, 1);
+   vec_remove_n(v, pos, elem, 1);
 }
 
 /**
@@ -217,7 +215,7 @@ inline void vec_remove(Vec *v, size_t pos, void *elem) {
  * @param[out] elem element removed, can be NULL
  */
 inline void vec_pop(Vec *v, void *elem) {
-    vec_remove_n(v, v->len - 1, elem, 1);
+   vec_remove_n(v, v->len - 1, elem, 1);
 }
 
 /**
@@ -227,7 +225,7 @@ inline void vec_pop(Vec *v, void *elem) {
  * @return boolean
  */
 inline bool vec_is_empty(Vec *v) {
-    return v->len == 0;
+   return v->len == 0;
 }
 
 /**
@@ -251,7 +249,7 @@ void vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
  * @param[in] nelem number of @p v 's elements
  */
 inline void vec_memset(Vec *v, void *dst, int val, size_t nelem) {
-    memset(dst, val, nelem * v->szof);
+   memset(dst, val, nelem * v->szof);
 }
 
 /**
@@ -263,7 +261,7 @@ inline void vec_memset(Vec *v, void *dst, int val, size_t nelem) {
  * @param[in] nelem number of @p v 's elements
  */
 inline void vec_memcpy(Vec *v, void *dst, void *src, size_t nelem) {
-    memcpy(dst, src, nelem * v->szof);
+   memcpy(dst, src, nelem * v->szof);
 }
 
 /**
@@ -275,7 +273,7 @@ inline void vec_memcpy(Vec *v, void *dst, void *src, size_t nelem) {
  * @param[in] nelem number of @p v 's elements
  */
 inline void vec_memmove(Vec *v, void *dst, void *src, size_t nelem) {
-    memmove(dst, src, nelem * v->szof);
+   memmove(dst, src, nelem * v->szof);
 }
 
 /**
@@ -287,7 +285,7 @@ inline void vec_memmove(Vec *v, void *dst, void *src, size_t nelem) {
  * @param[in] nelem number of @p v 's elements
  */
 inline int vec_memcmp(Vec *v, void *ptr1, void *ptr2, size_t nelem) {
-    return memcmp(ptr1, ptr2, nelem * v->szof);
+   return memcmp(ptr1, ptr2, nelem * v->szof);
 }
 
 #endif /* __VEC_H__ */
