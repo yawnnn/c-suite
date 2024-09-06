@@ -1,17 +1,17 @@
-#include "arena.h"
+#include "arena_allocator.h"
 
 #include <stdlib.h>
 
-void arena_init(Arena *arena) {
-   arena->head = NULL;
+void arena_allocator_init(ArenaAllocator *arena_alloc) {
+   arena_alloc->head = NULL;
 }
 
-void *arena_alloc(Arena *arena, size_t bytes) {
+void *arena_allocator_alloc(ArenaAllocator *arena_alloc, size_t bytes) {
    ArenaNode *next;
 
    next = (ArenaNode *)malloc(sizeof(ArenaNode) + bytes);
-   next->next = arena->head;
-   arena->head = next;
+   next->next = arena_alloc->head;
+   arena_alloc->head = next;
 
    /* normally you should worry about alignment here, but from what i understand
      * the result of malloc is already aligned
@@ -19,14 +19,18 @@ void *arena_alloc(Arena *arena, size_t bytes) {
    return ((char *)next) + sizeof(ArenaNode);
 }
 
-void *arena_realloc(Arena *arena, size_t bytes, void *prev_allocation) {
-   if (arena->head) {
+void *arena_allocator_realloc(
+   ArenaAllocator *arena_alloc,
+   size_t bytes,
+   void *prev_allocation
+) {
+   if (arena_alloc->head) {
       ArenaNode *curr, *prev, *needle;
 
       needle = (ArenaNode *)(((char *)prev_allocation) - sizeof(ArenaNode));
 
       prev = NULL;
-      curr = arena->head;
+      curr = arena_alloc->head;
       while (curr && curr != needle) {
          prev = curr;
          curr = curr->next;
@@ -42,7 +46,7 @@ void *arena_realloc(Arena *arena, size_t bytes, void *prev_allocation) {
          if (prev)
             prev->next = needle;
          else
-            arena->head = needle;
+            arena_alloc->head = needle;
 
          return ((char *)next) + sizeof(ArenaNode);
       }
@@ -51,11 +55,11 @@ void *arena_realloc(Arena *arena, size_t bytes, void *prev_allocation) {
    return NULL;
 }
 
-void arena_free(Arena *arena) {
-   if (arena->head) {
+void arena_allocator_free(ArenaAllocator *arena_alloc) {
+   if (arena_alloc->head) {
       ArenaNode *curr, *next;
 
-      curr = arena->head;
+      curr = arena_alloc->head;
       next = curr->next;
       while (next) {
          curr = next;
@@ -63,7 +67,7 @@ void arena_free(Arena *arena) {
          free(curr);
       }
 
-      free(arena->head);
-      arena->head = NULL;
+      free(arena_alloc->head);
+      arena_alloc->head = NULL;
    }
 }
