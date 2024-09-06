@@ -12,8 +12,8 @@
  * @brief linked list's node
  */
 typedef struct LLNode {
-    void *data; /**< the node's data */
-    struct LLNode *next; /**< the next node */
+   void *data; /**< the node's data */
+   struct LLNode *next; /**< the next node */
 } LLNode;
 
 /**
@@ -25,8 +25,8 @@ typedef void (*Func_Free)(void *);
  * @brief linked list
  */
 typedef struct LList {
-    LLNode *head; /**< beginning of the list */
-    LLNode *tail; /**< end of the list */
+   LLNode *head; /**< beginning of the list */
+   LLNode *tail; /**< end of the list */
 } LList;
 
 /**
@@ -129,7 +129,7 @@ void *llist_remove(LList *list, LLNode *node);
  * @return boolean
  */
 inline bool llist_is_empty(LList *list) {
-    return list->head == NULL;
+   return list->head == NULL;
 }
 
 #endif /* __LLIST_H__ */

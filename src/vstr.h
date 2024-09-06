@@ -12,9 +12,9 @@
  * @brief variable length string
  */
 typedef struct Vstr {
-    char *ptr; /**< underlying c-style string (access through vstr_data()) */
-    size_t len; /**< length of the Vstr */
-    size_t cap; /**< capacity allocated */
+   char *ptr; /**< underlying c-style string (access through vstr_data()) */
+   size_t len; /**< length of the Vstr */
+   size_t cap; /**< capacity allocated */
 } Vstr;
 
 /**
@@ -83,9 +83,9 @@ void vstr_shrink_to_fit(Vstr *s);
  * @return c-style string or NULL
  */
 inline char *vstr_data(Vstr *s) {
-    if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
-        return s->ptr;
-    return NULL;
+   if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
+      return s->ptr;
+   return NULL;
 }
 
 /**
@@ -96,10 +96,9 @@ inline char *vstr_data(Vstr *s) {
  * @return c-style string or NULL
  */
 inline char *vstr_data_from(Vstr *s, size_t pos) {
-    // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
-    if (pos <= s->len && s->cap)
-        return s->ptr + pos;
-    return NULL;
+   // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
+   if (pos <= s->len && s->cap) return s->ptr + pos;
+   return NULL;
 }
 
 /**
@@ -159,7 +158,7 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num);
  * @return boolean
  */
 inline bool vstr_is_empty(Vstr *s) {
-    return s->len == 0;
+   return s->len == 0;
 }
 
 #endif /* __VSTR_H__ */

@@ -2,11 +2,11 @@
 #define __ARENA_H__
 
 typedef struct ArenaNode {
-    struct ArenaNode *next;
+   struct ArenaNode *next;
 } ArenaNode;
 
 typedef struct Arena {
-    ArenaNode *head;
+   ArenaNode *head;
 } Arena;
 
 #endif /* __ARENA_H__ */
