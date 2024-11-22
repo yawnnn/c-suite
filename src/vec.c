@@ -51,9 +51,9 @@ static void vec_resize(Vec *v, size_t nelem) {
          vec_realloc(v, nelem);
       else if (nelem > v->cap)
          vec_realloc(v, v->cap * GROWTH_FACTOR);
-   } else {
-      vec_alloc(v, nelem > GROWTH_FACTOR ? nelem : GROWTH_FACTOR);
    }
+   else
+      vec_alloc(v, nelem > GROWTH_FACTOR ? nelem : GROWTH_FACTOR);
 }
 
 void vec_new(Vec *v, size_t szof) {
@@ -79,17 +79,20 @@ void vec_from(Vec *v, size_t szof, void *arr, size_t nelem) {
 }
 
 void vec_free(Vec *v) {
-   if (v->cap) free(v->ptr);
+   if (v->cap)
+      free(v->ptr);
    v->cap = 0;
    v->len = 0;
 }
 
 void vec_truncate(Vec *v, size_t new_len) {
-   if (new_len < v->len) v->len = new_len;
+   if (new_len < v->len)
+      v->len = new_len;
 }
 
 void vec_reserve(Vec *v, size_t nelem) {
-   if (nelem > v->cap) vec_resize(v, nelem);
+   if (nelem > v->cap)
+      vec_resize(v, nelem);
 }
 
 void vec_shrink_to_fit(Vec *v) {
@@ -102,11 +105,13 @@ void vec_shrink_to_fit(Vec *v) {
 }
 
 void vec_get(Vec *v, size_t pos, void *elem) {
-   if (pos < v->len) vec_memcpy(v, elem, vec_ptr(v, pos), 1);
+   if (pos < v->len)
+      vec_memcpy(v, elem, vec_ptr(v, pos), 1);
 }
 
 void vec_set(Vec *v, void *elem, size_t pos) {
-   if (pos < v->len) vec_memcpy(v, vec_ptr(v, pos), elem, 1);
+   if (pos < v->len)
+      vec_memcpy(v, vec_ptr(v, pos), elem, 1);
 }
 
 void vec_insert_n(Vec *v, void *elems, size_t nelem, size_t pos) {
@@ -120,14 +125,10 @@ void vec_insert_n(Vec *v, void *elems, size_t nelem, size_t pos) {
 
 void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem) {
    if (pos + nelem - 1 < v->len) {
-      if (elems) vec_memcpy(v, elems, vec_ptr(v, pos), nelem);
+      if (elems)
+         vec_memcpy(v, elems, vec_ptr(v, pos), nelem);
       if (pos + nelem < v->len)
-         vec_memmove(
-            v,
-            vec_ptr(v, pos),
-            vec_ptr(v, pos + nelem),
-            v->len - (pos + nelem)
-         );
+         vec_memmove(v, vec_ptr(v, pos), vec_ptr(v, pos + nelem), v->len - (pos + nelem));
       v->len -= nelem;
    }
 }

@@ -39,9 +39,9 @@ static void vstr_resize(Vstr *s, size_t nbytes) {
          vstr_realloc(s, nbytes);
       else if (nbytes > s->cap)
          vstr_realloc(s, s->cap * GROWTH_FACTOR);
-   } else {
-      vstr_alloc(s, nbytes > GROWTH_FACTOR ? nbytes : GROWTH_FACTOR);
    }
+   else
+      vstr_alloc(s, nbytes > GROWTH_FACTOR ? nbytes : GROWTH_FACTOR);
 }
 
 void vstr_new(Vstr *s) {
@@ -61,7 +61,8 @@ void vstr_from(Vstr *s, const char *source) {
 }
 
 void vstr_free(Vstr *s) {
-   if (s->cap) free(s->ptr);
+   if (s->cap)
+      free(s->ptr);
    s->cap = 0;
    s->len = 0;
 }
@@ -74,11 +75,13 @@ void vstr_truncate(Vstr *s, size_t new_len) {
 }
 
 void vstr_reserve(Vstr *s, size_t len) {
-   if (len + 1 > s->cap) vstr_resize(s, len + 1);
+   if (len + 1 > s->cap)
+      vstr_resize(s, len + 1);
 }
 
 void vstr_shrink_to_fit(Vstr *s) {
-   if (s->cap > s->len + 1) vstr_resize(s, s->len + 1);
+   if (s->cap > s->len + 1)
+      vstr_resize(s, s->len + 1);
 }
 
 void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
@@ -104,7 +107,8 @@ char *vstr_ncpy(Vstr *dest, const char *source, size_t num) {
    size_t src_len;
 
    src_len = strlen(source);
-   if (src_len < num) num = src_len;
+   if (src_len < num)
+      num = src_len;
    vstr_truncate(dest, 0);
    vstr_insert(dest, 0, source, num);
 
@@ -121,7 +125,8 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num) {
    size_t src_len;
 
    src_len = strlen(source);
-   if (src_len < num) num = src_len;
+   if (src_len < num)
+      num = src_len;
    vstr_insert(dest, dest->len, source, num);
 
    return dest->ptr;

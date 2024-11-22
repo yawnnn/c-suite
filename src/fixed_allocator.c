@@ -2,52 +2,49 @@
 
 #include <stdlib.h>
 
-void fixed_allocator_init(
-   FixedAllocator *fixed_alloc,
-   void *buffer,
-   size_t size
-) {
-   size_t aligned_head;
+// pointer size is always good enough
+#define DEFAULT_ALIGNMENT                (sizeof(void *))
 
-   // aligning the addres to a multiple of sizeof(void *)
-   aligned_head = (size_t)buffer;
-   aligned_head = (aligned_head + sizeof(void *) - 1) & ~(sizeof(void *) - 1);
+// align `addr` to multiple of `alignment`
+#define ALIGNED_ADDRESS(addr, alignment) (((addr) + (alignment) - 1) & ~((alignment) - 1))
 
-   fixed_alloc->start = (char *)(aligned_head);
-   fixed_alloc->head = (char *)(aligned_head);
-   fixed_alloc->end = fixed_alloc->start + size;
+void fixed_allocator_init(FixedAllocator *allocator, void *buffer, size_t size) {
+   uintptr_t buffer_addr;
+
+   buffer_addr = (uintptr_t)buffer;
+   buffer_addr = ALIGNED_ADDRESS(buffer_addr, DEFAULT_ALIGNMENT);
+
+   allocator->start = (unsigned char *)(buffer_addr);
+   allocator->head = allocator->start;
+   allocator->end = allocator->start + size;
 }
 
-void *fixed_allocator_alloc(FixedAllocator *fixed_alloc, size_t size) {
-   void *next_head;
+void *fixed_allocator_alloc(FixedAllocator *allocator, size_t size) {
+   void     *next_head, *allocation;
+   uintptr_t head_addr;
 
-   next_head = fixed_alloc->head + size;
+   next_head = allocator->head + size;
 
-   if (next_head > fixed_alloc->end) return NULL;
+   if (next_head > allocator->end)
+      return NULL;
 
-   void *allocation;
-   size_t aligned_head;
+   allocation = allocator->head;
+   allocator->head = next_head;
 
-   allocation = fixed_alloc->head;
-   fixed_alloc->head = next_head;
-
-   // aligning the addres to a multiple of sizeof(void *)
-   aligned_head = (size_t)fixed_alloc->head;
-   aligned_head = (aligned_head + sizeof(void *) - 1) & ~(sizeof(void *) - 1);
-   fixed_alloc->head = (char *)(aligned_head);
+   head_addr = (uintptr_t)allocator->head;
+   head_addr = ALIGNED_ADDRESS(head_addr, DEFAULT_ALIGNMENT);
+   allocator->head = (unsigned char *)(head_addr);
 
    return allocation;
 }
 
-void *fixed_allocator_realloc(
-   FixedAllocator *fixed_alloc,
-   void *ptr,
-   size_t new_size
-) {
-   // wastes the previous memory
-   return fixed_allocator_alloc(fixed_alloc, new_size);
+void *fixed_allocator_realloc(FixedAllocator *allocator, size_t size, void *prev_allocation) {
+   // i can't free the previous allocation, so it goes to waste
+   return fixed_allocator_alloc(allocator, size);
 }
 
-void fixed_allocator_clear(FixedAllocator *fixed_alloc) {
-   fixed_alloc->head = fixed_alloc->start;
+void fixed_allocator_free(FixedAllocator *allocator, void *ptr) {}
+
+void fixed_allocator_deinit(FixedAllocator *allocator) {
+   allocator->head = allocator->start;
 }

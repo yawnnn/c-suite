@@ -56,7 +56,9 @@ void *tracking_allocator_realloc(TrackingAllocator *allocator, size_t size, void
    return NULL;
 }
 
-void tracking_allocator_free(TrackingAllocator *allocator) {
+void tracking_allocator_free(TrackingAllocator *allocator, void *ptr) {}
+
+void tracking_allocator_deinit(TrackingAllocator *allocator) {
    TrackingList *list = &allocator->list;
 
    if (list->head) {
@@ -74,5 +76,3 @@ void tracking_allocator_free(TrackingAllocator *allocator) {
       list->head = NULL;
    }
 }
-
-void tracking_allocator_reset(TrackingAllocator *allocator) {}

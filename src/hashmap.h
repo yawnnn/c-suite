@@ -11,14 +11,14 @@
 
 typedef struct HashNode {
    uint64_t hash;
-   void *key;
-   void *value;
+   void    *key;
+   void    *value;
 } HashNode;
 
 typedef struct HashBucket {
    HashNode *ptr;
-   size_t len;
-   size_t cap;
+   size_t    len;
+   size_t    cap;
 } HashBucket;
 
 typedef uint32_t hash_t;
@@ -27,8 +27,8 @@ typedef hash_t (*hashfunc_t)(const void *key, size_t size);
 
 typedef struct HashMap {
    HashBucket *buckets;
-   size_t nbucket;
-   size_t nitem;
+   size_t      nbucket;
+   size_t      nitem;
 
    size_t key_size;
    size_t value_size;
