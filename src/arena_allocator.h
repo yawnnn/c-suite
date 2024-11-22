@@ -20,7 +20,7 @@ typedef struct ArenaAllocator {
 
 void arena_allocator_init(ArenaAllocator *allocator, size_t default_arena_size);
 void *arena_allocator_alloc(ArenaAllocator *allocator, size_t size);
-void arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_block);
+void *arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_block);
 void arena_allocator_free(ArenaAllocator *allocator, void *block);
 void arena_allocator_reset(ArenaAllocator *allocator);
 

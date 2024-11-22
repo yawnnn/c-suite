@@ -4,6 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+// pointer size is always good enough
+#define DEFAULT_ALIGNMENT                       (sizeof(void *))
+
+// align `addr` to multiple of `alignment`
+#define ALIGNED_ADDRESS(addr, alignment)        (((addr) + (alignment) - 1) & ~((alignment) - 1))
+
+// the actual tag data + the eventual padding to align with `alignment`
+#define MAX_TAG_SIZE(min_tag_size, alignment)   ((min_tag_size) + (alignment) - 1)
+
 inline static void arena_alloc(Arena *arena, size_t size);
 inline static void arena_free(Arena *arena);
 static Arena *arena_list_alloc(ArenaList *list, size_t size);
@@ -42,31 +51,28 @@ static void arena_list_free(ArenaList *list) {
 }
 
 static Arena *arena_list_find_empty(ArenaList *list, size_t size) {
-   Arena *arena = NULL;
+   Arena *curr = NULL;
 
    for (size_t i = 0; i < list->len; i++) {
-      // `Arena::used` could be bigger than `Arena::size` because of alignment
-      if (!list->ptr[i].start || list->ptr[i].used + size < list->ptr[i].size) {
-         arena = &list->ptr[i];
-         break;
-      }
+      curr = &list->ptr[i];
+      if (!curr->start || curr->used + size < curr->size)
+         return curr;
    }
 
-   return arena;
+   return NULL;
 }
 
 static Arena *arena_list_find_corresponding(ArenaList *list, void *block) {
-   Arena *arena = NULL;
+   Arena *curr = NULL;
    unsigned char *block_ = block;
 
    for (size_t i = 0; i < list->len; i++) {
-      if (list->ptr[i].start >= block_ && block_ - list->ptr[i].start < list->ptr[i].used) {
-         arena = &list->ptr[i];
-         break;
-      }
+      curr = &list->ptr[i];
+      if (curr->start >= block_ && block_ - curr->start < curr->used)
+         return curr;
    }
 
-   return arena;
+   return NULL;
 }
 
 void arena_allocator_init(ArenaAllocator *allocator, size_t default_arena_size) {
@@ -77,51 +83,71 @@ void arena_allocator_init(ArenaAllocator *allocator, size_t default_arena_size) 
 void *arena_allocator_alloc(ArenaAllocator *allocator, size_t size) {
    ArenaList *arena_list = &allocator->arena_list;
    Arena *arena;
-   size_t required_size, block_size;
-   void *block;
+   size_t max_required_size, arena_size;
+   uintptr_t head_addr;
+   unsigned char *block;
 
-   // tag + block
-   required_size = 1 + size;
+   if (!size)
+      return NULL;
 
-   arena = arena_list_find_empty(arena_list, required_size);
+   max_required_size = MAX_TAG_SIZE(sizeof(size_t), DEFAULT_ALIGNMENT) + size;
+
+   arena = arena_list_find_empty(arena_list, max_required_size);
    if (!arena) {
-      block_size = allocator->default_arena_size < required_size ? required_size
-                                                                 : allocator->default_arena_size;
-      arena = arena_list_alloc(arena_list, block_size);
+      arena_size = allocator->default_arena_size < max_required_size
+         ? max_required_size
+         : allocator->default_arena_size;
+      arena = arena_list_alloc(arena_list, arena_size);
    }
 
-   // tag, to detect double free
-   arena->start[arena->used] = (unsigned char)0;
-   arena->used++;
+   head_addr = (uintptr_t)(arena->start + arena->used);
 
-   block = &arena->start[arena->used];
-   arena->used += size;
+   // tag data
+   head_addr += sizeof(size_t);
+
+   // align the block for performance
+   head_addr = ALIGNED_ADDRESS(head_addr, DEFAULT_ALIGNMENT);
+
+   block = (unsigned char *)head_addr;
+
+   // writing down block size. i need this for realloc and safeguard against double free
+   *(size_t *)(block - sizeof(size_t)) = size;
+   arena->used = (size_t)(block + size - arena->start);
    arena->nblocks++;
 
-   // aligning to a multiple of sizeof(void *), which should be good enough for everything
-   arena->used = (arena->used + sizeof(void *) - 1) & ~(sizeof(void *) - 1);
-
-   return block;
+   return (void *)block;
 }
 
-void arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_block) {
+void *arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_block) {
    ArenaList *arena_list = &allocator->arena_list;
    Arena *arena;
+   unsigned char *old_block_ = old_block;
    void *new_block;
-   size_t max_old_block_size;
+   size_t old_size;
 
-   arena = arena_list_find_corresponding(arena_list, old_block);
+   arena = arena_list_find_corresponding(arena_list, old_block_);
    if (!arena)
       return NULL;
 
-   new_block = arena_allocator_alloc(allocator, size);
+   old_size = *(size_t *)(old_block_ - sizeof(size_t));
 
-   // i don't know the exact size of the previous old_block, so i just copy as much as i have
-   max_old_block_size = (size_t)((arena->start + arena->size) - old_block);
-   max_old_block_size = max_old_block_size > size ? size : max_old_block_size;
-   memcpy(new_block, old_block, max_old_block_size);
-
-   arena_allocator_free(allocator, old_block);
+   if (size < old_size) {
+      // shrink, so i reuse the same block
+      arena->used -= old_size - size;
+      new_block = old_block;
+   }
+   else if (arena->start + arena->used == old_block_ + old_size
+            && arena->start + arena->size >= old_block_ + size)
+   {
+      // grow, but i can extend the current
+      arena->used += size - old_size;
+      new_block = old_block;
+   }
+   else {
+      new_block = arena_allocator_alloc(allocator, size);
+      memcpy(new_block, old_block, old_size);
+      arena_allocator_free(allocator, old_block);
+   }
 
    return new_block;
 }
@@ -129,20 +155,19 @@ void arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_b
 void arena_allocator_free(ArenaAllocator *allocator, void *block) {
    ArenaList *arena_list = &allocator->arena_list;
    Arena *arena;
-   size_t i;
-   unsigned char *tag;
+   size_t i, *psize;
+   unsigned char *block_ = block;
 
    // check if i allocated it
    arena = arena_list_find_corresponding(arena_list, block);
    if (!arena)
       return;
 
-   // check double free
-   tag = (unsigned char *)block - 1;
-   if (*tag)
+   psize = (size_t *)(block_ - sizeof(size_t));
+   if (!*psize)
       return;
 
-   *tag = 1;
+   *psize = 0;
    arena->nblocks--;
 
    if (!arena->nblocks) {
@@ -152,6 +177,6 @@ void arena_allocator_free(ArenaAllocator *allocator, void *block) {
 }
 
 void arena_allocator_reset(ArenaAllocator *allocator) {
-   arena_list_free(allocator);
+   arena_list_free(&allocator->arena_list);
    memset(allocator, 0, sizeof(ArenaAllocator));
 }
