@@ -11,6 +11,7 @@ typedef struct Arena {
 typedef struct ArenaList {
    Arena *ptr;
    size_t len;
+   size_t first_usable;
 } ArenaList;
 
 typedef struct ArenaAllocator {
