@@ -12,7 +12,7 @@
  * @brief variable length string
  */
 typedef struct Vstr {
-   char *ptr; /**< underlying c-style string (access through vstr_data()) */
+   char  *ptr; /**< underlying c-style string (access through vstr_data()) */
    size_t len; /**< length of the Vstr */
    size_t cap; /**< capacity allocated */
 } Vstr;
@@ -97,7 +97,8 @@ inline char *vstr_data(Vstr *s) {
  */
 inline char *vstr_data_from(Vstr *s, size_t pos) {
    // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
-   if (pos <= s->len && s->cap) return s->ptr + pos;
+   if (pos <= s->len && s->cap)
+      return s->ptr + pos;
    return NULL;
 }
 

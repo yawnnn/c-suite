@@ -25,7 +25,8 @@ static LLNode *llnode_new(void *data) {
  * @param func_free callback to free the nodes's data
  */
 static inline void llnode_free(LLNode *node, Func_Free func_free) {
-   if (func_free) func_free(node->data);
+   if (func_free)
+      func_free(node->data);
    free(node);
 }
 
@@ -66,7 +67,8 @@ LLNode *llist_prev(LList *list, LLNode *curr) {
       prev = NULL;
       while ((prev = llist_next(list, prev)) != NULL && prev->next != curr)
          ;
-   } else
+   }
+   else
       prev = list->tail;
 
    return prev;
@@ -80,7 +82,8 @@ LLNode *llist_push_back(LList *list, void *data) {
    if (!llist_is_empty(list)) {
       list->tail->next = node;
       list->tail = node;
-   } else
+   }
+   else
       list->head = list->tail = node;
 
    return node;
@@ -94,7 +97,8 @@ LLNode *llist_push_front(LList *list, void *data) {
    if (!llist_is_empty(list)) {
       node->next = list->head;
       list->head = node;
-   } else
+   }
+   else
       list->head = list->tail = node;
 
    return node;
@@ -108,8 +112,10 @@ LLNode *llist_insert(LList *list, LLNode *prev, void *data) {
       node->next = prev->next;
       prev->next = node;
 
-      if (prev == list->tail) list->tail = node;
-   } else
+      if (prev == list->tail)
+         list->tail = node;
+   }
+   else
       node = llist_push_front(list, data);
 
    return node;
@@ -117,9 +123,10 @@ LLNode *llist_insert(LList *list, LLNode *prev, void *data) {
 
 void *llist_pop_back(LList *list) {
    LLNode *to_remove;
-   void *data;
+   void   *data;
 
-   if (llist_is_empty(list)) return NULL;
+   if (llist_is_empty(list))
+      return NULL;
 
    to_remove = list->tail;
    data = to_remove->data;
@@ -142,9 +149,10 @@ void *llist_pop_back(LList *list) {
 
 void *llist_pop_front(LList *list) {
    LLNode *to_remove;
-   void *data;
+   void   *data;
 
-   if (llist_is_empty(list)) return NULL;
+   if (llist_is_empty(list))
+      return NULL;
 
    to_remove = list->head;
    data = to_remove->data;
@@ -161,22 +169,26 @@ void *llist_pop_front(LList *list) {
 
 void *llist_remove(LList *list, LLNode *node) {
    LLNode *prev;
-   void *data;
+   void   *data;
 
-   if (llist_is_empty(list) || !node) return NULL;
+   if (llist_is_empty(list) || !node)
+      return NULL;
 
    if (node == list->head) {
       data = node->data;
       list->head = node->next;
       llnode_free(node, NULL);
-   } else if ((prev = llist_prev(list, node)) != NULL) {
+   }
+   else if ((prev = llist_prev(list, node)) != NULL) {
       data = node->data;
       prev->next = node->next;
 
-      if (node == list->tail) list->tail = prev;
+      if (node == list->tail)
+         list->tail = prev;
 
       llnode_free(node, NULL);
-   } else
+   }
+   else
       data = NULL;
 
    return data;

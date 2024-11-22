@@ -13,7 +13,7 @@
  * @brief variable length array
  */
 typedef struct Vec {
-   void *ptr; /**< underlying data (if needed, access through vec_data()) */
+   void  *ptr; /**< underlying data (if needed, access through vec_data()) */
    size_t len; /**< number of usable elements */
    size_t szof; /**< sizeof() of the data type to be held */
    size_t cap; /**< number of elements for which there is space allocated */
@@ -105,7 +105,8 @@ void vec_shrink_to_fit(Vec *v);
  * @return pointer to beginning of data
  */
 inline void *vec_data(Vec *v) {
-   if (v->len) return v->ptr;
+   if (v->len)
+      return v->ptr;
    return NULL;
 }
 
@@ -119,7 +120,8 @@ inline void *vec_data(Vec *v) {
  * @return pointer to element
  */
 inline void *vec_elem_at(Vec *v, size_t pos) {
-   if (pos < v->len) return (void *)(((char *)v->ptr) + (pos * v->szof));
+   if (pos < v->len)
+      return ((char *)v->ptr) + (pos * v->szof);
    return NULL;
 }
 

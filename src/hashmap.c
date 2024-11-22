@@ -7,8 +7,8 @@
 // Perl's hash function
 static hash_t hash_func_generic(const void *key, size_t size) {
    register const uint8_t *data;
-   register size_t i;
-   register hash_t hash;
+   register size_t         i;
+   register hash_t         hash;
 
    const hash_t seed = 0;
 
@@ -53,7 +53,8 @@ inline static void hashbucket_grow(HashBucket *bucket) {
       if (bucket->cap) {
          bucket->cap = bucket->cap * 2;
          bucket->ptr = realloc(bucket->ptr, bucket->cap * sizeof(HashNode));
-      } else {
+      }
+      else {
          bucket->cap = 2;
          bucket->ptr = malloc(bucket->cap * sizeof(HashNode));
       }
@@ -73,13 +74,7 @@ static HashNode *hashbucket_find(HashBucket *bucket, hash_t hash) {
    return NULL;
 }
 
-static void hashbucket_push(
-   HashMap *map,
-   HashBucket *bucket,
-   hash_t hash,
-   void *key,
-   void *value
-) {
+static void hashbucket_push(HashMap *map, HashBucket *bucket, hash_t hash, void *key, void *value) {
    HashNode *node;
 
    hashbucket_grow(bucket);
@@ -93,12 +88,12 @@ static void hashbucket_push(
 }
 
 static bool hashbucket_insert(
-   HashMap *map,
+   HashMap    *map,
    HashBucket *bucket,
-   hash_t hash,
-   void *key,
-   void *value,
-   void *prev
+   hash_t      hash,
+   void       *key,
+   void       *value,
+   void       *prev
 ) {
    HashNode *found;
 
@@ -106,21 +101,23 @@ static bool hashbucket_insert(
    if (!found)
       hashbucket_push(map, bucket, hash, key, value);
    else {
-      if (prev) memcpy(prev, found->value, map->value_size);
+      if (prev)
+         memcpy(prev, found->value, map->value_size);
       memcpy(found->value, value, map->value_size);
    }
 
    return found != NULL;
 }
 
-static bool
-hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, void *prev) {
+static bool hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, void *prev) {
    HashNode *node;
 
    node = hashbucket_find(bucket, hash);
-   if (!node) return false;
+   if (!node)
+      return false;
 
-   if (prev) memcpy(prev, node->value, map->value_size);
+   if (prev)
+      memcpy(prev, node->value, map->value_size);
    node->key = NULL;
 
    return true;
@@ -138,7 +135,8 @@ static void hashmap_grow(HashMap *map) {
       map->nbucket = map->nbucket * 2;
       map->buckets = realloc(map->buckets, map->nbucket * sizeof(HashBucket));
       memset(&map->buckets[old_nbucket], 0, old_nbucket * sizeof(HashBucket));
-   } else {
+   }
+   else {
       map->nbucket = 8;
       map->buckets = calloc(map->nbucket, sizeof(HashBucket));
    }
@@ -147,7 +145,8 @@ static void hashmap_grow(HashMap *map) {
 inline static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash) {
    size_t pos;
 
-   if (!map->nbucket) return NULL;
+   if (!map->nbucket)
+      return NULL;
    // since nbucket is always a power of 2, i don't need to use modulo
    pos = hash & (map->nbucket - 1);
 
@@ -173,8 +172,8 @@ void hashmap_free(HashMap *map) {
 
 bool hashmap_insert(HashMap *map, void *key, void *value, void *prev) {
    HashBucket *bucket;
-   HashNode *node;
-   hash_t hash;
+   HashNode   *node;
+   hash_t      hash;
 
    hash = map->hash_func(key, map->key_size);
 
@@ -185,38 +184,43 @@ bool hashmap_insert(HashMap *map, void *key, void *value, void *prev) {
    }
 
    bool found = hashbucket_insert(map, bucket, hash, key, value, prev);
-   if (!found) map->nitem++;
+   if (!found)
+      map->nitem++;
 
    return found;
 }
 
 bool hashmap_remove(HashMap *map, void *key, void *value) {
    HashBucket *bucket;
-   hash_t hash;
+   hash_t      hash;
 
    hash = map->hash_func(key, map->key_size);
 
    bucket = hashmap_get_bucket(map, hash);
-   if (!bucket) return false;
+   if (!bucket)
+      return false;
 
    bool found = hashbucket_remove(map, bucket, hash, value);
-   if (found) map->nitem--;
+   if (found)
+      map->nitem--;
 
    return found;
 }
 
 bool hashmap_get(HashMap *map, void *key, void *value) {
    HashBucket *bucket;
-   HashNode *node;
-   hash_t hash;
+   HashNode   *node;
+   hash_t      hash;
 
    hash = map->hash_func(key, map->key_size);
 
    bucket = hashmap_get_bucket(map, hash);
-   if (!bucket) return false;
+   if (!bucket)
+      return false;
 
    node = hashbucket_find(bucket, hash);
-   if (!node) return false;
+   if (!node)
+      return false;
 
    hashnode_get(map, node, value);
 

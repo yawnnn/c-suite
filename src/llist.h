@@ -12,7 +12,7 @@
  * @brief linked list's node
  */
 typedef struct LLNode {
-   void *data; /**< the node's data */
+   void          *data; /**< the node's data */
    struct LLNode *next; /**< the next node */
 } LLNode;
 
