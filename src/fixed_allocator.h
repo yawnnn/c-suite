@@ -1,6 +1,8 @@
 #ifndef __FIXED_ALLOCATOR_H__
 #define __FIXED_ALLOCATOR_H__
 
+#include <stdint.h>
+
 /**
  * @brief allocates memory only within the initial buffer provided to init
  */

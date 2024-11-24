@@ -1,5 +1,7 @@
 #include "hashmap.h"
 
+#include <string.h>
+
 //////////////////////////////////////////////////////////////////////////////////////
 // other functions
 //////////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +86,7 @@ static void hashbucket_push(HashMap *map, HashBucket *bucket, hash_t hash, void 
    node->hash = hash;
    node->key = key;
    node->value = malloc(map->value_size);
-   memcpy(node->value, value);
+   memcpy(node->value, value, map->value_size);
 }
 
 static bool hashbucket_insert(

@@ -1,5 +1,7 @@
 #include "vstr.h"
 
+#include <string.h>
+
 #define GROWTH_FACTOR (2UL)
 
 /**

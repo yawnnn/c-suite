@@ -1,6 +1,8 @@
 #ifndef __TRACKING_ALLOCATOR_H__
 #define __TRACKING_ALLOCATOR_H__
 
+#include <stdint.h>
+
 typedef struct TrackingNode {
    struct TrackingNode *next;
 } TrackingNode;

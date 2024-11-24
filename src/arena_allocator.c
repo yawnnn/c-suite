@@ -14,15 +14,18 @@
 // the actual tag data + the eventual padding to align with `alignment`
 #define MAX_TAG_SIZE(min_tag_size, alignment) ((min_tag_size) + (alignment) - 1)
 
-static inline void arena_alloc(Arena *arena, size_t size);
-static inline void arena_free(Arena *arena);
-static Arena      *arena_list_alloc(ArenaList *list, size_t size);
-static void        arena_list_free(ArenaList *list);
-static Arena      *arena_list_find_usable(ArenaList *list, size_t size);
-static Arena      *arena_list_find_corresponding(ArenaList *list, void *block);
-static void        arena_list_increased_usage(ArenaList *list, Arena *arena);
-static inline void arena_list_decreased_usage(ArenaList *list, Arena *arena);
-static inline void arena_list_emptied(ArenaList *list, Arena *arena);
+static inline void           arena_alloc(Arena *arena, size_t size);
+static inline void           arena_free(Arena *arena);
+static inline bool           arena_has_room(Arena *arena, size_t size);
+static inline bool           arena_owns_block(Arena *arena, void *block);
+static inline unsigned char *arena_head(Arena *arena);
+static inline unsigned char *arena_end(Arena *arena);
+static Arena                *arena_list_alloc(ArenaList *list, size_t size);
+static void                  arena_list_free(ArenaList *list);
+static Arena                *arena_list_find_usable(ArenaList *list, size_t size);
+static Arena                *arena_list_find_corresponding(ArenaList *list, void *block);
+static void                  arena_list_increased_usage(ArenaList *list, Arena *arena);
+static inline void           arena_list_decreased_usage(ArenaList *list, Arena *arena);
 
 static inline void arena_alloc(Arena *arena, size_t size) {
    arena->start = (unsigned char *)malloc(size);
@@ -97,12 +100,13 @@ static Arena *arena_list_find_corresponding(ArenaList *list, void *block) {
 static void arena_list_increased_usage(ArenaList *list, Arena *arena) {
    // only if it previosly was the first usable
    if (arena == &list->ptr[list->first_usable]) {
-      Arena *curr;
-      size_t i;
+      const size_t min_occupancy = 1 + MAX_TAG_SIZE(sizeof(size_t), DEFAULT_ALIGNMENT);
+      Arena       *curr;
+      size_t       i;
 
       for (i = list->first_usable; i < list->len; i++) {
          curr = &list->ptr[i];
-         if (!curr->start || arena_has_room(curr, MAX_TAG_SIZE(sizeof(size_t), DEFAULT_ALIGNMENT)))
+         if (!curr->start || arena_has_room(curr, min_occupancy))
             break;
       }
 
@@ -111,15 +115,11 @@ static void arena_list_increased_usage(ArenaList *list, Arena *arena) {
 }
 
 static inline void arena_list_decreased_usage(ArenaList *list, Arena *arena) {
-   if (arena < &list->ptr[list->first_usable]
-       && arena_has_room(arena, MAX_TAG_SIZE(sizeof(size_t), DEFAULT_ALIGNMENT)))
-   {
-      list->first_usable = (size_t)(list->ptr - arena);
-   }
-}
+   const size_t min_occupancy = 1 + MAX_TAG_SIZE(sizeof(size_t), DEFAULT_ALIGNMENT);
 
-static inline void arena_list_emptied(ArenaList *list, Arena *arena) {
-   if (arena < &list->ptr[list->first_usable]) {
+   if (arena < &list->ptr[list->first_usable]
+       && (!arena->start || arena_has_room(arena, min_occupancy)))
+   {
       list->first_usable = (size_t)(list->ptr - arena);
    }
 }
@@ -224,7 +224,7 @@ void arena_allocator_free(ArenaAllocator *allocator, void *block) {
    unsigned char *block_ = block;
 
    // check if i allocated it
-   arena = arena_list_find_corresponding(arena_list, block);
+   arena = arena_list_find_corresponding(arena_list, block_);
    if (!arena)
       return;
 
@@ -239,7 +239,7 @@ void arena_allocator_free(ArenaAllocator *allocator, void *block) {
       arena_free(arena);
       memset(arena, 0, sizeof(Arena));
 
-      arena_list_emptied(arena_list, arena);
+      arena_list_decreased_usage(arena_list, arena);
    }
 }
 
