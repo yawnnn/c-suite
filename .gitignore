@@ -99,9 +99,5 @@ latex
 
 # End of https://www.toptal.com/developers/gitignore/api/c,c++,visualstudiocode,doxygen
 
-### My stuff ###
 build/*
-
-# used for tests
-main.c
-build.bat
+_build.bat

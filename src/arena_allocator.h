@@ -1,6 +1,8 @@
 #ifndef __ARENA_ALLOCATOR_H__
 #define __ARENA_ALLOCATOR_H__
 
+#include <stdint.h>
+
 typedef struct Arena {
    unsigned char *start;
    size_t         size;
