@@ -20,8 +20,8 @@ void fixed_allocator_init(FixedAllocator *allocator, void *buffer, size_t size) 
 }
 
 void *fixed_allocator_alloc(FixedAllocator *allocator, size_t size) {
-   void     *next_head, *allocation;
-   uintptr_t head_addr;
+   unsigned char *next_head, *allocation;
+   uintptr_t      head_addr;
 
    next_head = allocator->head + size;
 

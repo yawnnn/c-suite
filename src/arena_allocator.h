@@ -5,8 +5,8 @@
 
 typedef struct Arena {
    unsigned char *start;
-   size_t         size;
-   size_t         used;
+   unsigned char *head;
+   unsigned char *end;
    size_t         nblocks;
 } Arena;
 
