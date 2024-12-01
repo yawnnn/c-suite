@@ -16,7 +16,6 @@ static inline void   arena_free(Arena *arena);
 static inline bool   arena_has_room(Arena *arena, size_t size);
 static inline bool   arena_owns_block(Arena *arena, void *block);
 static Arena        *arena_list_alloc(ArenaList *list, size_t size);
-static void          arena_list_free_arena(ArenaList *list, Arena *arena);
 static void          arena_list_free(ArenaList *list);
 static inline Arena *arena_list_find_usable(ArenaList *list, size_t size);
 static inline Arena *arena_list_find_corresponding(ArenaList *list, void *block);
@@ -25,7 +24,6 @@ static inline void arena_alloc(Arena *arena, size_t size) {
    arena->start = (unsigned char *)malloc(size);
    arena->head = arena->start;
    arena->end = arena->start + size;
-   arena->nblocks = 0;
 }
 
 static inline void arena_free(Arena *arena) {
@@ -52,19 +50,6 @@ static Arena *arena_list_alloc(ArenaList *list, size_t size) {
    arena_alloc(arena, size);
 
    return arena;
-}
-
-static void arena_list_free_arena(ArenaList *list, Arena *arena) {
-   arena->nblocks--;
-
-   if (!arena->nblocks) {
-      arena_free(arena);
-
-      if ((size_t)(arena - list->ptr) < list->len - 1) {
-         memcpy(arena, &list->ptr[list->len - 1], sizeof(Arena));
-         memset(&list->ptr[list->len - 1], 0, sizeof(Arena));
-      }
-   }
 }
 
 static void arena_list_free(ArenaList *list) {
@@ -112,18 +97,13 @@ void *arena_allocator_alloc(ArenaAllocator *allocator, size_t size) {
    unsigned char *block;
 
    arena = arena_list_find_usable(arena_list, size);
-   if (!arena || !arena->start) {
+   if (!arena) {
       arena_size = allocator->default_arena_size < size ? size : allocator->default_arena_size;
-
-      if (!arena)
-         arena = arena_list_alloc(arena_list, arena_size);
-      else
-         arena_alloc(arena, arena_size);
+      arena = arena_list_alloc(arena_list, arena_size);
    }
 
    block = arena->head;
    arena->head += ALIGNED_ADDRESS(size, DEFAULT_ALIGNMENT);
-   arena->nblocks++;
 
    return (void *)block;
 }
@@ -145,20 +125,11 @@ void *arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_
    max_size = arena->end - old_block_;
    memcpy(new_block, old_block_, size > max_size ? max_size : size);
 
-   arena_list_free_arena(arena_list, arena);
-
    return new_block;
 }
 
 void arena_allocator_free(ArenaAllocator *allocator, void *block) {
-   ArenaList *arena_list = &allocator->arena_list;
-   Arena     *arena;
-
-   arena = arena_list_find_corresponding(arena_list, block);
-   if (!arena)
-      return;
-
-   arena_list_free_arena(arena_list, arena);
+   ;
 }
 
 void arena_allocator_deinit(ArenaAllocator *allocator) {

@@ -4,6 +4,9 @@
         "arena_allocator.h": "c",
         "jansson.h": "c",
         "fixed_allocator.h": "c",
-        "hashmap.h": "c"
+        "hashmap.h": "c",
+        "vector": "cpp",
+        "xhash": "cpp",
+        "xstring": "cpp"
     }
 }
