@@ -100,4 +100,4 @@ latex
 # End of https://www.toptal.com/developers/gitignore/api/c,c++,visualstudiocode,doxygen
 
 build/*
-_build.bat
+test.json

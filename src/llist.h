@@ -128,7 +128,7 @@ void *llist_remove(LList *list, LLNode *node);
  * @param[in] list linked list
  * @return boolean
  */
-inline bool llist_is_empty(LList *list) {
+static inline bool llist_is_empty(LList *list) {
    return list->head == NULL;
 }
 
