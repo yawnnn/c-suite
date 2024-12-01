@@ -4,8 +4,6 @@
 #include <time.h>
 
 #include "arena_allocator.h"
-#include "fixed_allocator.h"
-#include "tracking_allocator.h"
 
 #include "jansson.h"
 
@@ -137,22 +135,22 @@ int make_test_json(const char *filename, int num_objects, int max_depth) {
    return EXIT_SUCCESS;
 }
 
-static ArenaAllocator allocator = {0};
+static ArenaAllocator my = {0};
 
-void arena_init() {
-   arena_allocator_init(&allocator, 4096 * 100);
+void my_init() {
+   arena_allocator_init(&my, 4096 * 100);
 }
 
-void arena_deinit() {
-   arena_allocator_deinit(&allocator);
+void my_deinit() {
+   arena_allocator_deinit(&my);
 }
 
-void *arena_malloc(size_t size) {
-   return arena_allocator_alloc(&allocator, size);
+void *my_malloc(size_t size) {
+   return arena_allocator_alloc(&my, size);
 }
 
-void arena_free(void *ptr) {
-   arena_allocator_free(&allocator, ptr);
+void my_free(void *ptr) {
+   arena_allocator_free(&my, ptr);
 }
 
 // Function to run a single test 100 times with the specified allocator
@@ -193,23 +191,23 @@ int main() {
    const char *filename = "benches\\test.json";
    int         runs = 5;
 
-   make_test_json(filename, 5000, 10);
+   if (!fopen(filename, "r"))
+      make_test_json(filename, 5000, 10);
 
    // Test with standard malloc/free
    printf("\nTesting with standard malloc/free:\n");
    double standard_time = run_test(filename, runs, NULL, NULL, malloc, free);
    printf("Standard allocator time for %d runs: %.6f seconds\n", runs, standard_time);
 
-   // Test with custom allocator
-   printf("Testing with custom allocator:\n");
-   double custom_time =
-      run_test(filename, runs, arena_init, arena_deinit, arena_malloc, arena_free);
-   printf("Custom allocator time for %d runs: %.6f seconds\n", runs, custom_time);
+   // Test with my allocator
+   printf("Testing with my allocator:\n");
+   double my_time = run_test(filename, runs, my_init, my_deinit, my_malloc, my_free);
+   printf("my allocator time for %d runs: %.6f seconds\n", runs, my_time);
 
    // Display comparison
    printf("\nComparison:\n");
    printf("Standard allocator total time: %.6f seconds\n", standard_time);
-   printf("Custom allocator total time: %.6f seconds\n", custom_time);
+   printf("my allocator total time: %.6f seconds\n", my_time);
 
    return 0;
 }

@@ -7,13 +7,11 @@ typedef struct Arena {
    unsigned char *start;
    unsigned char *head;
    unsigned char *end;
-   size_t         nblocks;
 } Arena;
 
 typedef struct ArenaList {
    Arena *ptr;
    size_t len;
-   size_t first_usable;
 } ArenaList;
 
 typedef struct ArenaAllocator {
