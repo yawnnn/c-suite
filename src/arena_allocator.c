@@ -108,7 +108,7 @@ void arena_allocator_init(ArenaAllocator *allocator, size_t default_arena_size) 
 void *arena_allocator_alloc(ArenaAllocator *allocator, size_t size) {
    ArenaList     *arena_list = &allocator->arena_list;
    Arena         *arena;
-   size_t         arena_size, aligned_size;
+   size_t         arena_size;
    unsigned char *block;
 
    arena = arena_list_find_usable(arena_list, size);

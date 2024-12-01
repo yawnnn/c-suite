@@ -82,7 +82,7 @@ void vstr_shrink_to_fit(Vstr *s);
  * @param[in] s Vstr
  * @return c-style string or NULL
  */
-inline char *vstr_data(Vstr *s) {
+static inline char *vstr_data(Vstr *s) {
    if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
       return s->ptr;
    return NULL;
@@ -95,7 +95,7 @@ inline char *vstr_data(Vstr *s) {
  * @param[in] pos start position
  * @return c-style string or NULL
  */
-inline char *vstr_data_from(Vstr *s, size_t pos) {
+static inline char *vstr_data_from(Vstr *s, size_t pos) {
    // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
    if (pos <= s->len && s->cap)
       return s->ptr + pos;
@@ -158,7 +158,7 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num);
  * @param[in] s Vstr
  * @return boolean
  */
-inline bool vstr_is_empty(Vstr *s) {
+static inline bool vstr_is_empty(Vstr *s) {
    return s->len == 0;
 }
 

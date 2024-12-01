@@ -174,7 +174,6 @@ void hashmap_free(HashMap *map) {
 
 bool hashmap_insert(HashMap *map, void *key, void *value, void *prev) {
    HashBucket *bucket;
-   HashNode   *node;
    hash_t      hash;
 
    hash = map->hash_func(key, map->key_size);
