@@ -5,20 +5,31 @@
 #include <stdlib.h>
 #include <string.h>
 
-// pointer size is always good enough
-#define DEFAULT_ALIGNMENT                (sizeof(void *))
+#include <stdio.h>
 
-// align `addr` to multiple of `alignment`
-#define ALIGNED_ADDRESS(addr, alignment) (((addr) + (alignment) - 1) & ~((alignment) - 1))
+#define TRY_REUSE_BLOCK          0
+
+// good enough for everything
+#define ALIGNMENT                8
+
+// align `x` to multiple of `alignment`
+#define __ALIGN_UP(x, alignment) (((x) + ((alignment) - 1)) & ~((alignment) - 1))
+
+#define ALIGN_PTR(p, alignment)  ((void *)__ALIGN_UP((uintptr_t)p, (uintptr_t)alignment))
+#define ALIGN_NUM(n, alignment)  __ALIGN_UP((size_t)n, (size_t)alignment)
+
+#define MAX(a, b)                ((a) > (b) ? (a) : (b))
 
 static inline void   arena_alloc(Arena *arena, size_t size);
 static inline void   arena_free(Arena *arena);
 static inline bool   arena_has_room(Arena *arena, size_t size);
 static inline bool   arena_owns_block(Arena *arena, void *block);
-static Arena        *arena_list_alloc(ArenaList *list, size_t size);
-static void          arena_list_free(ArenaList *list);
-static inline Arena *arena_list_find_usable(ArenaList *list, size_t size);
-static inline Arena *arena_list_find_corresponding(ArenaList *list, void *block);
+static Arena        *arena_alloc_add(ArenaAlloc *alloc);
+static inline Arena *arena_alloc_find_usable(ArenaAlloc *list, size_t size);
+
+#if TRY_REUSE_BLOCK
+static inline Arena *arena_alloc_find_owner(ArenaAlloc *list, void *block);
+#endif
 
 static inline void arena_alloc(Arena *arena, size_t size) {
    arena->start = (unsigned char *)malloc(size);
@@ -40,99 +51,121 @@ static inline bool arena_owns_block(Arena *arena, void *block) {
    return arena->start <= block_ && block_ < arena->head;
 }
 
-static Arena *arena_list_alloc(ArenaList *list, size_t size) {
-   Arena *arena;
+static Arena *arena_alloc_add(ArenaAlloc *alloc) {
+   alloc->len++;
+   alloc->ptr = (Arena *)realloc(alloc->ptr, alloc->len * sizeof(Arena));
+   if (!alloc->ptr)
+      return NULL;
 
-   list->len++;
-   list->ptr = (Arena *)realloc(list->ptr, list->len * sizeof(Arena));
+   memset(&alloc->ptr[alloc->len - 1], 0, sizeof(Arena));
 
-   arena = &list->ptr[list->len - 1];
-   arena_alloc(arena, size);
-
-   return arena;
+   return &alloc->ptr[alloc->len - 1];
 }
 
-static void arena_list_free(ArenaList *list) {
-   while (list->len--)
-      arena_free(&list->ptr[list->len]);
-
-   if (list->ptr)
-      free(list->ptr);
-}
-
-static inline Arena *arena_list_find_usable(ArenaList *list, size_t size) {
+static inline Arena *arena_alloc_find_usable(ArenaAlloc *alloc, size_t size) {
    Arena *curr;
 
-   // start from the bottom, the emptiest ones are always gonna be there
-   for (size_t i = list->len; i > 0; i--) {
-      curr = &list->ptr[i - 1];
-      if (!curr->start || arena_has_room(curr, size))
+   // the emptiest ones are always gonna be there
+   for (size_t i = alloc->len; i > 0; i--) {
+      curr = &alloc->ptr[i - 1];
+      if (arena_has_room(curr, size))
          return curr;
    }
+
+   curr = &alloc->ptr[alloc->len - 1];
+   if (!curr->start)
+      return curr;
 
    return NULL;
 }
 
-static inline Arena *arena_list_find_corresponding(ArenaList *list, void *block) {
+#if TRY_REUSE_BLOCK
+static inline Arena *arena_alloc_find_owner(ArenaAlloc *alloc, void *block) {
    Arena *curr;
 
-   for (size_t i = 0; i < list->len; i++) {
-      curr = &list->ptr[i];
+   for (size_t i = 0; i < alloc->len; i++) {
+      curr = &alloc->ptr[i];
       if (arena_owns_block(curr, block))
          return curr;
    }
 
    return NULL;
 }
+#endif
 
-void arena_allocator_init(ArenaAllocator *allocator, size_t default_arena_size) {
-   memset(allocator, 0, sizeof(ArenaAllocator));
-   allocator->default_arena_size = default_arena_size;
+void arena_alloc_init(ArenaAlloc *alloc, size_t min_size) {
+   memset(alloc, 0, sizeof(*alloc));
+   alloc->min_size = min_size;
+   arena_alloc_add(alloc);
 }
 
-void *arena_allocator_alloc(ArenaAllocator *allocator, size_t size) {
-   ArenaList     *arena_list = &allocator->arena_list;
+void *arena_alloc_alloc(ArenaAlloc *alloc, size_t size) {
    Arena         *arena;
-   size_t         arena_size;
    unsigned char *block;
 
-   arena = arena_list_find_usable(arena_list, size);
+   if (!size)
+      return NULL;
+
+   // either here, or lower when increasing head, but then i need to check for surpassing `end`
+   size = ALIGN_UP(size, ALIGNMENT);
+
+   arena = arena_alloc_find_usable(alloc, size);
    if (!arena) {
-      arena_size = allocator->default_arena_size < size ? size : allocator->default_arena_size;
-      arena = arena_list_alloc(arena_list, arena_size);
+      arena = arena_alloc_add(alloc);
+      if (!arena)
+         return NULL;
+   }
+
+   if (!arena->start) {
+      arena_alloc(arena, MAX(alloc->min_size, size));
+      if (!arena->start)
+         return NULL;
    }
 
    block = arena->head;
-   arena->head += ALIGNED_ADDRESS(size, DEFAULT_ALIGNMENT);
+   arena->head += size;
 
    return (void *)block;
 }
 
-void *arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_block) {
-   ArenaList     *arena_list = &allocator->arena_list;
-   Arena         *arena;
+void *arena_alloc_realloc(ArenaAlloc *alloc, size_t new_size, void *old_block, size_t old_size) {
    unsigned char *old_block_ = old_block;
    void          *new_block;
-   size_t         max_size;
 
-   arena = arena_list_find_corresponding(arena_list, old_block_);
+   if (!new_size)
+      return NULL;
+
+#if TRY_REUSE_BLOCK
+   Arena *arena;
+   arena = arena_alloc_find_owner(alloc, old_block_);
    if (!arena)
       return NULL;
 
-   new_block = arena_allocator_alloc(allocator, size);
-
-   // i don't know the size of the previous allocation, so i just copy as much as it could possibly be
-   max_size = arena->end - old_block_;
-   memcpy(new_block, old_block_, size > max_size ? max_size : size);
+   if ((size_t)(arena->end - old_block_) <= new_size) {
+      new_block = old_block;
+      if (old_size < new_size)
+         arena->head += ALIGN_UP(new_size - old_size, ALIGNMENT);
+      else
+         arena->head -= ALIGN_UP(old_size - new_size, ALIGNMENT);
+   }
+   else {
+#endif
+      new_block = arena_alloc_alloc(alloc, new_size);
+      if (new_block)
+         memcpy(new_block, old_block_, old_size);
+#if TRY_REUSE_BLOCK
+   }
+#endif
 
    return new_block;
 }
 
-void arena_allocator_free(ArenaAllocator *allocator, void *block) {
-   ;
-}
+void arena_alloc_free(ArenaAlloc *alloc, void *block) {}
 
-void arena_allocator_deinit(ArenaAllocator *allocator) {
-   arena_list_free(&allocator->arena_list);
-   memset(allocator, 0, sizeof(ArenaAllocator));
+void arena_alloc_deinit(ArenaAlloc *alloc) {
+   while (alloc->len--)
+      arena_free(&alloc->ptr[alloc->len]);
+
+   free(alloc->ptr);
+   memset(alloc, 0, sizeof(*alloc));
 }
