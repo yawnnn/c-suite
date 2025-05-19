@@ -9,20 +9,16 @@ typedef struct Arena {
    unsigned char *end;
 } Arena;
 
-typedef struct ArenaList {
+typedef struct ArenaAlloc {
    Arena *ptr;
    size_t len;
-} ArenaList;
+   size_t min_size;
+} ArenaAlloc;
 
-typedef struct ArenaAllocator {
-   ArenaList arena_list;
-   size_t    default_arena_size;
-} ArenaAllocator;
-
-void  arena_allocator_init(ArenaAllocator *allocator, size_t default_arena_size);
-void *arena_allocator_alloc(ArenaAllocator *allocator, size_t size);
-void *arena_allocator_realloc(ArenaAllocator *allocator, size_t size, void *old_block);
-void  arena_allocator_free(ArenaAllocator *allocator, void *block);
-void  arena_allocator_deinit(ArenaAllocator *allocator);
+void  arena_alloc_init(ArenaAlloc *alloc, size_t min_size);
+void *arena_alloc_alloc(ArenaAlloc *alloc, size_t size);
+void *arena_alloc_realloc(ArenaAlloc *alloc, size_t new_size, void *old_block, size_t old_size);
+void  arena_alloc_free(ArenaAlloc *alloc, void *block);
+void  arena_alloc_deinit(ArenaAlloc *alloc);
 
 #endif /* __ARENA_ALLOCATOR_H__ */
