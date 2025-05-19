@@ -54,10 +54,10 @@ int main() {
    int    *v2;
    LLNode *n3 = llist_push_front(&list, get_unique_id());
    int    *v3;
-   /*LLNode *n4 = */llist_push_front(&list, get_unique_id());
-   int    *v4;
-   /*LLNode *n5 = */llist_push_back(&list, get_unique_id());
-   int    *v5;
+   /*LLNode *n4 = */ llist_push_front(&list, get_unique_id());
+   int *v4;
+   /*LLNode *n5 = */ llist_push_back(&list, get_unique_id());
+   int *v5;
 
    dbg_front(&list);  //       dbg_back(&list);
 
@@ -68,12 +68,12 @@ int main() {
 
    dbg_front(&list);  //       dbg_back(&list);
 
-   /*LLNode *n6 = */llist_insert(&list, llist_prev(&list, n2), get_unique_id());
+   /*LLNode *n6 = */ llist_insert(&list, llist_prev(&list, n2), get_unique_id());
    int    *v6;
    LLNode *n7 = llist_insert(&list, llist_next(&list, n3), get_unique_id());
    int    *v7;
-   /*LLNode *n8 = */llist_insert(&list, llist_prev(&list, n1), get_unique_id());
-   int    *v8;
+   /*LLNode *n8 = */ llist_insert(&list, llist_prev(&list, n1), get_unique_id());
+   int *v8;
 
    dbg_front(&list);
    dbg_back(&list);
@@ -87,8 +87,8 @@ int main() {
    v8 = llist_remove(&list, llist_prev(&list, n2));
    free(v8);
 
-   /*LLNode *n9 = */llist_insert(&list, llist_prev(&list, n2), get_unique_id());
-   int    *v9;
+   /*LLNode *n9 = */ llist_insert(&list, llist_prev(&list, n2), get_unique_id());
+   int *v9;
 
    v2 = llist_remove(&list, list.tail);
    free(v2);

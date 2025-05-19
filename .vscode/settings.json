@@ -1,7 +1,7 @@
 {
     "files.associations": {
         "stdbool.h": "c",
-        "arena_allocator.h": "c",
+        "arena.h": "c",
         "jansson.h": "c",
         "fixed_allocator.h": "c",
         "hashmap.h": "c",

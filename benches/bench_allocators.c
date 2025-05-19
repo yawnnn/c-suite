@@ -2,15 +2,34 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#include "arena_allocator.h"
-
+#include <math.h>
 #include "jansson.h"
+
+#include "arena.h"
+
+static Arena g_arena = {0};
+
+void _arena_init() {
+   arena_init(&g_arena, 8192);
+}
+
+void _arena_deinit() {
+   arena_deinit(&g_arena);
+}
+
+void *_arena_alloc(size_t size) {
+   return arena_alloc(&g_arena, size);
+}
+
+void _arena_free(void *ptr) {}
+
+#define NUM_CYCLES 5
 
 // Function to generate a random string
 char *random_string(size_t length) {
    static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
    char             *str = malloc(length + 1);
+
    if (!str) {
       fprintf(stderr, "Memory allocation failed for random string.\n");
       exit(EXIT_FAILURE);
@@ -20,11 +39,12 @@ char *random_string(size_t length) {
       str[i] = charset[rand() % (sizeof(charset) - 1)];
    }
    str[length] = '\0';
+
    return str;
 }
 
 // Function to generate a random JSON object
-json_t *generate_object(int depth, int max_depth) {
+json_t *random_json_object(int depth, int max_depth) {
    if (depth > max_depth) {
       // Return a random terminal value
       int choice = rand() % 5;
@@ -61,7 +81,7 @@ json_t *generate_object(int depth, int max_depth) {
             value = json_integer(rand() % 1000);
             break;
          case 2:  // Nested object
-            value = generate_object(depth + 1, max_depth);
+            value = random_json_object(depth + 1, max_depth);
             break;
          case 3: {  // Array of strings
             value = json_array();
@@ -89,17 +109,20 @@ json_t *generate_object(int depth, int max_depth) {
 }
 
 // Function to write JSON incrementally to a file
-void write_large_json(const char *filename, int num_objects, int max_depth) {
+void generate_random_json(const char *filename, int num_objects, int max_depth) {
    FILE *file = fopen(filename, "w");
    if (!file) {
       fprintf(stderr, "Failed to open file '%s' for writing.\n", filename);
       exit(EXIT_FAILURE);
    }
 
+   srand((unsigned int)time(NULL));
+   json_set_alloc_funcs(malloc, free);
+
    fprintf(file, "{\"root\": [");  // Start the JSON array
 
    for (int i = 0; i < num_objects; i++) {
-      json_t *obj = generate_object(1, max_depth);
+      json_t *obj = random_json_object(1, max_depth);
       char   *json_str = json_dumps(obj, JSON_COMPACT);
       if (!json_str) {
          fprintf(stderr, "Failed to serialize JSON object.\n");
@@ -121,42 +144,48 @@ void write_large_json(const char *filename, int num_objects, int max_depth) {
    printf("JSON successfully written to '%s'\n", filename);
 }
 
-int make_test_json(const char *filename, int num_objects, int max_depth) {
-   if (num_objects <= 0 || max_depth <= 0) {
-      fprintf(stderr, "Error: num_objects and max_depth must be positive integers.\n");
-      return EXIT_FAILURE;
+typedef struct Bench {
+   double mean, min, max, stddev;
+} Bench;
+
+void calc_bench(Bench *bench, clock_t *starts, clock_t *ends) {
+   double durations[NUM_CYCLES];
+   double sum = 0.0, mean, min, max, stddev = 0.0;
+
+   // Convert clock ticks to seconds and store durations
+   for (int i = 0; i < NUM_CYCLES; ++i) {
+      durations[i] = (double)(ends[i] - starts[i]) / CLOCKS_PER_SEC;
+      sum += durations[i];
    }
 
-   srand((unsigned int)time(NULL));  // Seed the random number generator
+   // Calculate mean
+   mean = sum / NUM_CYCLES;
 
-   // Generate and write JSON file
-   write_large_json(filename, num_objects, max_depth);
+   // Initialize min and max
+   min = max = durations[0];
+   for (int i = 1; i < NUM_CYCLES; ++i) {
+      if (durations[i] < min)
+         min = durations[i];
+      if (durations[i] > max)
+         max = durations[i];
+   }
 
-   return EXIT_SUCCESS;
+   // Calculate standard deviation
+   for (int i = 0; i < NUM_CYCLES; ++i) {
+      stddev += (durations[i] - mean) * (durations[i] - mean);
+   }
+   stddev = sqrt(stddev / NUM_CYCLES);  // or use (n - 1) for sample stddev
+
+   bench->mean = mean;
+   bench->min = min;
+   bench->max = max;
+   bench->stddev = stddev;
 }
 
-static ArenaAllocator my = {0};
-
-void my_init() {
-   arena_allocator_init(&my, 4096 * 100);
-}
-
-void my_deinit() {
-   arena_allocator_deinit(&my);
-}
-
-void *my_malloc(size_t size) {
-   return arena_allocator_alloc(&my, size);
-}
-
-void my_free(void *ptr) {
-   arena_allocator_free(&my, ptr);
-}
-
-// Function to run a single test 100 times with the specified allocator
-double run_test(
+// Run tests `cycles` times
+void benchmark(
+   Bench      *bench,
    const char *filename,
-   int         runs,
    void (*init_func)(),
    void (*deinit_func)(),
    void *(*alloc_func)(size_t),
@@ -164,9 +193,11 @@ double run_test(
 ) {
    json_set_alloc_funcs(alloc_func, free_func);
 
-   clock_t start_time = clock();
+   clock_t starts[NUM_CYCLES], ends[NUM_CYCLES];
 
-   for (int i = 0; i < runs; i++) {
+   for (int i = 0; i < NUM_CYCLES; i++) {
+      starts[i] = clock();
+
       if (init_func)
          init_func();
 
@@ -180,34 +211,35 @@ double run_test(
 
       if (deinit_func)
          deinit_func();
+
+      ends[i] = clock();
    }
 
-   clock_t end_time = clock();
+   calc_bench(bench, starts, ends);
+}
 
-   return (double)(end_time - start_time) / CLOCKS_PER_SEC;
+void print_bench(Bench *bench, const char *what) {
+   printf("Results for `%s`: \n", what);
+   printf("Average: %f seconds\n", bench->mean);
+   printf("Minimum: %f seconds\n", bench->min);
+   printf("Maximum: %f seconds\n", bench->max);
+   printf("Std Dev: %f seconds\n", bench->stddev);
+   printf("\n");
 }
 
 int main() {
+   Bench       bench = {0};
    const char *filename = "benches\\test.json";
-   int         runs = 5;
 
    if (!fopen(filename, "r"))
-      make_test_json(filename, 5000, 10);
+      remove(filename);
+   generate_random_json(filename, 5000, 10);
 
-   // Test with standard malloc/free
-   printf("\nTesting with standard malloc/free:\n");
-   double standard_time = run_test(filename, runs, NULL, NULL, malloc, free);
-   printf("Standard allocator time for %d runs: %.6f seconds\n", runs, standard_time);
+   benchmark(&bench, filename, NULL, NULL, malloc, free);
+   print_bench(&bench, "malloc");
 
-   // Test with my allocator
-   printf("Testing with my allocator:\n");
-   double my_time = run_test(filename, runs, my_init, my_deinit, my_malloc, my_free);
-   printf("my allocator time for %d runs: %.6f seconds\n", runs, my_time);
-
-   // Display comparison
-   printf("\nComparison:\n");
-   printf("Standard allocator total time: %.6f seconds\n", standard_time);
-   printf("my allocator total time: %.6f seconds\n", my_time);
+   benchmark(&bench, filename, _arena_init, _arena_deinit, _arena_alloc, _arena_free);
+   print_bench(&bench, "arena");
 
    return 0;
 }
