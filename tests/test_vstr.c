@@ -6,13 +6,13 @@
 
 int main() {
     Vstr s;
-
+    
     vstr_new(&s);
-    vstr_ncpy(&s, "hello world", 4);
-    vstr_ncat(&s, "hello world", 4);
-    vstr_ncat(&s, "hello world", 6);
-
-    printf(vstr_data(&s));
-
+    vstr_ncpy(&s, "first", 4);
+    vstr_ncat(&s, "second", 4);
+    vstr_ncat(&s, "third", 6);
+    
+    printf("%s", vstr_data(&s));
+    
     vstr_free(&s);
 }
