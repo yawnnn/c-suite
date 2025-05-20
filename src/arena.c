@@ -1,11 +1,9 @@
-#include "arena.h"
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <stdio.h>
+#include "arena.h"
 
 // good enough for everything
 #define DEFAULT_ALIGNMENT        8
@@ -15,9 +13,9 @@
 
 // increasing this means better performance but also more waste of memory
 // es. (WORST CASE) the following will always waste the remaining first block
-//     arena_alloc((DEFAULT_BLOCK_SIZE/2)+1);      // first block
-//     arena_alloc((DEFAULT_BLOCK_SIZE/2));        // second block
-#define DEFAULT_BLOCK_SIZE       8192
+//     arena_alloc((DEFAULT_MIN_BLOCK_SIZE/2)+1);      // first block
+//     arena_alloc((DEFAULT_MIN_BLOCK_SIZE/2));        // second block
+#define DEFAULT_MIN_BLOCK_SIZE   8192
 
 static Block *block_new(size_t size) {
    Block *blk;
@@ -55,7 +53,6 @@ static void *block_alloc(Block *blk, size_t size, size_t min_block_size) {
          return NULL;
 
       blk->next = new_blk;
-      blk->used = size;
       blk = new_blk;
    }
 
@@ -66,7 +63,7 @@ static void *block_alloc(Block *blk, size_t size, size_t min_block_size) {
 }
 
 void arena_init(Arena *arena, size_t min_block_size) {
-   arena->min_block_size = min_block_size ? min_block_size : DEFAULT_BLOCK_SIZE;
+   arena->min_block_size = min_block_size ? min_block_size : DEFAULT_MIN_BLOCK_SIZE;
    arena->first = block_new(arena->min_block_size);
 
 #if __DEBUG
