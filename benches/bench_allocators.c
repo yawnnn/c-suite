@@ -9,27 +9,62 @@
 
 static Arena g_arena = {0};
 
-void _arena_init() {
-   arena_init(&g_arena, 8192);
+void arena_init_() {
+   arena_init(&g_arena, 1024 * 8 * 4);
 }
 
-void _arena_deinit() {
+void arena_deinit_() {
    arena_deinit(&g_arena);
 }
 
-void *_arena_alloc(size_t size) {
+void *arena_alloc_(size_t size) {
    return arena_alloc(&g_arena, size);
 }
 
-void _arena_free(void *ptr) {}
+void arena_free_(void *ptr) {}
+
+// #include "arena2.h"
+
+// static Arena2 g_arena2 = {0};
+
+// void arena2_init_() {
+//    arena2_init(&g_arena2, 8192);
+// }
+
+// void arena2_deinit_() {
+//    arena2_deinit(&g_arena2);
+// }
+
+// void *arena2_alloc_(size_t size) {
+//    return arena2_alloc(&g_arena2, size);
+// }
+
+// void arena2_free_(void *ptr) {}
+
+// #include "arena3.h"
+
+// static Arena3 g_arena3 = {0};
+
+// void arena3_init_() {}
+
+// void arena3_deinit_() {
+//    arena3_free(&g_arena3);
+// }
+
+// void *arena3_alloc_(size_t size) {
+//    return arena3_alloc(&g_arena3, size);
+// }
+
+// void arena3_free_(void *ptr) {}
 
 #define NUM_CYCLES 5
 
 // Function to generate a random string
 char *random_string(size_t length) {
-   static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-   char             *str = malloc(length + 1);
+   const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+   char      *str;
 
+   str = malloc(length + 1);
    if (!str) {
       fprintf(stderr, "Memory allocation failed for random string.\n");
       exit(EXIT_FAILURE);
@@ -43,22 +78,17 @@ char *random_string(size_t length) {
    return str;
 }
 
-// Function to generate a random JSON object
 json_t *random_json_object(int depth, int max_depth) {
    if (depth > max_depth) {
-      // Return a random terminal value
-      int choice = rand() % 5;
-      switch (choice) {
+      switch (rand() % 4) {
          case 0:
-            return json_string(random_string(20));  // Random string
+            return json_string(random_string(20));
          case 1:
-            return json_integer(rand() % 1000);  // Random number
+            return json_integer(rand() % 1000);
          case 2:
-            return json_true();  // Boolean true
-         case 3:
-            return json_false();  // Boolean false
+            return json_true();
          default:
-            return json_null();  // Null value
+            return json_null();
       }
    }
 
@@ -69,28 +99,27 @@ json_t *random_json_object(int depth, int max_depth) {
    }
 
    for (int i = 0; i < 5; i++) {  // Create 5 random key-value pairs
-      char *key = random_string(10);
-
-      int     choice = rand() % 5;
+      char   *key;
       json_t *value;
-      switch (choice) {
-         case 0:  // Random string
+
+      switch (rand() % 5) {
+         case 0:
             value = json_string(random_string(20));
             break;
-         case 1:  // Random number
+         case 1:
             value = json_integer(rand() % 1000);
             break;
-         case 2:  // Nested object
+         case 2:
             value = random_json_object(depth + 1, max_depth);
             break;
-         case 3: {  // Array of strings
+         case 3: {
             value = json_array();
             for (int j = 0; j < 5; j++) {
                json_array_append_new(value, json_string(random_string(20)));
             }
             break;
          }
-         case 4: {  // Array of numbers
+         case 4: {
             value = json_array();
             for (int j = 0; j < 5; j++) {
                json_array_append_new(value, json_integer(rand() % 1000));
@@ -99,16 +128,17 @@ json_t *random_json_object(int depth, int max_depth) {
          }
          default:
             value = json_null();
+            break;
       }
 
+      key = random_string(10);
       json_object_set_new(obj, key, value);
-      free(key);  // Free the key after use
+      free(key);
    }
 
    return obj;
 }
 
-// Function to write JSON incrementally to a file
 void generate_random_json(const char *filename, int num_objects, int max_depth) {
    FILE *file = fopen(filename, "w");
    if (!file) {
@@ -119,7 +149,7 @@ void generate_random_json(const char *filename, int num_objects, int max_depth) 
    srand((unsigned int)time(NULL));
    json_set_alloc_funcs(malloc, free);
 
-   fprintf(file, "{\"root\": [");  // Start the JSON array
+   fprintf(file, "{\"root\": [");
 
    for (int i = 0; i < num_objects; i++) {
       json_t *obj = random_json_object(1, max_depth);
@@ -130,15 +160,15 @@ void generate_random_json(const char *filename, int num_objects, int max_depth) 
       }
 
       fprintf(file, "%s", json_str);
-      free(json_str);  // Free serialized JSON string
-      json_decref(obj);  // Decrease reference count and free object
+      free(json_str);
+      json_decref(obj);
 
       if (i < num_objects - 1) {
-         fprintf(file, ",");  // Add a comma between objects
+         fprintf(file, ",");
       }
    }
 
-   fprintf(file, "]}");  // Close the JSON array
+   fprintf(file, "]}");
    fclose(file);
 
    printf("JSON successfully written to '%s'\n", filename);
@@ -150,39 +180,30 @@ typedef struct Bench {
 
 void calc_bench(Bench *bench, clock_t *starts, clock_t *ends) {
    double durations[NUM_CYCLES];
-   double sum = 0.0, mean, min, max, stddev = 0.0;
 
-   // Convert clock ticks to seconds and store durations
+   memset(bench, 0, sizeof(*bench));
+
    for (int i = 0; i < NUM_CYCLES; ++i) {
       durations[i] = (double)(ends[i] - starts[i]) / CLOCKS_PER_SEC;
-      sum += durations[i];
+      bench->mean += durations[i];
    }
 
-   // Calculate mean
-   mean = sum / NUM_CYCLES;
+   bench->mean /= NUM_CYCLES;
 
-   // Initialize min and max
-   min = max = durations[0];
+   bench->min = bench->max = durations[0];
    for (int i = 1; i < NUM_CYCLES; ++i) {
-      if (durations[i] < min)
-         min = durations[i];
-      if (durations[i] > max)
-         max = durations[i];
+      if (durations[i] < bench->min)
+         bench->min = durations[i];
+      if (durations[i] > bench->max)
+         bench->max = durations[i];
    }
 
-   // Calculate standard deviation
    for (int i = 0; i < NUM_CYCLES; ++i) {
-      stddev += (durations[i] - mean) * (durations[i] - mean);
+      bench->stddev += (durations[i] - bench->mean) * (durations[i] - bench->mean);
    }
-   stddev = sqrt(stddev / NUM_CYCLES);  // or use (n - 1) for sample stddev
-
-   bench->mean = mean;
-   bench->min = min;
-   bench->max = max;
-   bench->stddev = stddev;
+   bench->stddev = sqrt(bench->stddev / NUM_CYCLES);
 }
 
-// Run tests `cycles` times
 void benchmark(
    Bench      *bench,
    const char *filename,
@@ -220,26 +241,39 @@ void benchmark(
 
 void print_bench(Bench *bench, const char *what) {
    printf("Results for `%s`: \n", what);
-   printf("Average: %f seconds\n", bench->mean);
-   printf("Minimum: %f seconds\n", bench->min);
-   printf("Maximum: %f seconds\n", bench->max);
-   printf("Std Dev: %f seconds\n", bench->stddev);
+   printf("Average: %f secs\n", bench->mean);
+   printf("Minimum: %f secs\n", bench->min);
+   printf("Maximum: %f secs\n", bench->max);
+   printf("Std Dev: %f secs\n", bench->stddev);
    printf("\n");
 }
 
 int main() {
+   FILE       *file;
    Bench       bench = {0};
-   const char *filename = "benches\\test.json";
+   const char *filename = "benches/test.json";
 
-   if (!fopen(filename, "r"))
-      remove(filename);
-   generate_random_json(filename, 5000, 10);
+   // generate big (~10MB) random JSON
+   if ((file = fopen(filename, "r")) == NULL)
+      generate_random_json(filename, 5000, 10);
+   else
+      fclose(file);
 
+   // load it with callbacks provided and benchmark it
    benchmark(&bench, filename, NULL, NULL, malloc, free);
    print_bench(&bench, "malloc");
 
-   benchmark(&bench, filename, _arena_init, _arena_deinit, _arena_alloc, _arena_free);
+   benchmark(&bench, filename, arena_init_, arena_deinit_, arena_alloc_, arena_free_);
    print_bench(&bench, "arena");
+   //printf("\n\nTOT: %zu\n\n", arena_tot());
+
+   // benchmark(&bench, filename, arena2_init_, arena2_deinit_, arena2_alloc_, arena2_free_);
+   // print_bench(&bench, "arena2");
+   // printf("\n\nTOT: %zu\n\n", arena2_tot());
+
+   // benchmark(&bench, filename, arena3_init_, arena3_deinit_, arena3_alloc_, arena3_free_);
+   // print_bench(&bench, "arena3");
+   // printf("\n\nTOT: %zu\n\n", arena3_tot());
 
    return 0;
 }

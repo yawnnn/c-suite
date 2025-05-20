@@ -1,5 +1,5 @@
-#ifndef __ARENA_ALLOC_H__
-#define __ARENA_ALLOC_H__
+#ifndef __ARENA_H__
+#define __ARENA_H__
 
 #include <stdint.h>
 
@@ -28,4 +28,4 @@ void *arena_alloc(Arena *alloc, size_t size);
 void *arena_realloc(Arena *alloc, size_t new_size, void *old_block, size_t old_size);
 void  arena_deinit(Arena *alloc);
 
-#endif /* __ARENA_ALLOC_H__ */
+#endif /* __ARENA_H__ */
