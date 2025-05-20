@@ -102,3 +102,4 @@ latex
 build/*
 benches/*
 !benches/*.c
+.env
