@@ -7,6 +7,7 @@
         "hashmap.h": "c",
         "vector": "cpp",
         "xhash": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "stdint.h": "c"
     }
 }
