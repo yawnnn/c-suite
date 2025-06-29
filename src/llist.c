@@ -2,194 +2,183 @@
 
 #include <stdlib.h>
 
-/**
- * @brief create new node
- * 
- * @param[in] data node's data
- * @return node created
- */
-static LLNode *llnode_new(void *data) {
-   LLNode *node;
+static LNode *lnode_new(void *data, LNode *prev, LNode *next)
+{
+   LNode *node = malloc(sizeof(LNode));
 
-   node = malloc(sizeof(LLNode));
+   node->next = next;
+   node->prev = prev;
    node->data = data;
-   node->next = NULL;
 
    return node;
 }
 
-/**
- * @brief free the node
- * 
- * @param[in,out] node linked list node
- * @param func_free callback to free the nodes's data
- */
-static inline void llnode_free(LLNode *node, Func_Free func_free) {
-   if (func_free)
-      func_free(node->data);
+void llist_init(LList *llist)
+{
+   llist->head = llist->tail = NULL;
+}
+
+void llist_free(LList *llist)
+{
+   LNode *next;
+
+   while (llist->head) {
+      next = llist->head->next;
+      free(llist->head);
+      llist->head = next;
+   }
+
+   llist->head = llist->tail = NULL;
+}
+
+void llist_free_with(LList *llist, FreeFunc free_func)
+{
+   LNode *next;
+
+   while (llist->head) {
+      next = llist->head->next;
+      free_func(llist->head->data);
+      free(llist->head);
+      llist->head = next;
+   }
+
+   llist->head = llist->tail = NULL;
+}
+
+LNode *llist_push_front(LList *llist, void *data)
+{
+   LNode *node = lnode_new(data, NULL, llist->head);
+
+   if (llist->head)
+      llist->head->prev = node;
+   else
+      llist->tail = node;
+
+   llist->head = node;
+
+   return node;
+}
+
+LNode *llist_push_back(LList *llist, void *data)
+{
+   LNode *node = lnode_new(data, llist->tail, NULL);
+
+   if (llist->tail)
+      llist->tail->next = node;
+   else
+      llist->head = node;
+
+   llist->tail = node;
+
+   return node;
+}
+
+void *llist_pop_front(LList *llist)
+{
+   if (!llist->head)
+      return NULL;
+
+   void  *data = llist->head->data;
+   LNode *next = llist->head->next;
+
+   if (next)
+      next->prev = NULL;
+   else
+      llist->tail = NULL;
+
+   free(llist->head);
+   llist->head = next;
+
+   return data;
+}
+
+void *llist_pop_back(LList *llist)
+{
+   if (!llist->tail)
+      return NULL;
+
+   void  *data = llist->tail->data;
+   LNode *prev = llist->tail->prev;
+
+   if (prev)
+      prev->next = NULL;
+   else
+      llist->head = NULL;
+
+   free(llist->tail);
+   llist->tail = prev;
+
+   return data;
+}
+
+void *llist_remove(LList *llist, LNode *node)
+{
+   void *data = node->data;
+
+   if (node->prev)
+      node->prev->next = node->next;
+   else
+      llist->head = node->next;
+
+   if (node->next)
+      node->next->prev = node->prev;
+   else
+      llist->tail = node->prev;
+
    free(node);
-}
-
-void llist_init(LList *list) {
-   list->head = NULL;
-   list->tail = NULL;
-}
-
-void llist_free(LList *list, Func_Free func_free) {
-   if (!llist_is_empty(list)) {
-      LLNode *curr, *next;
-
-      curr = list->head;
-      next = curr->next;
-
-      while (next) {
-         curr = next;
-         next = next->next;
-         llnode_free(curr, func_free);
-      }
-
-      llnode_free(list->head, func_free);
-      list->head = list->tail = NULL;
-   }
-}
-
-LLNode *llist_next(LList *list, LLNode *curr) {
-   if (curr)
-      return curr->next;
-   else
-      return list->head;
-}
-
-LLNode *llist_prev(LList *list, LLNode *curr) {
-   LLNode *prev;
-
-   if (curr) {
-      prev = NULL;
-      while ((prev = llist_next(list, prev)) != NULL && prev->next != curr)
-         ;
-   }
-   else
-      prev = list->tail;
-
-   return prev;
-}
-
-LLNode *llist_push_back(LList *list, void *data) {
-   LLNode *node;
-
-   node = llnode_new(data);
-
-   if (!llist_is_empty(list)) {
-      list->tail->next = node;
-      list->tail = node;
-   }
-   else
-      list->head = list->tail = node;
-
-   return node;
-}
-
-LLNode *llist_push_front(LList *list, void *data) {
-   LLNode *node;
-
-   node = llnode_new(data);
-
-   if (!llist_is_empty(list)) {
-      node->next = list->head;
-      list->head = node;
-   }
-   else
-      list->head = list->tail = node;
-
-   return node;
-}
-
-LLNode *llist_insert(LList *list, LLNode *prev, void *data) {
-   LLNode *node;
-
-   if (prev) {
-      node = llnode_new(data);
-      node->next = prev->next;
-      prev->next = node;
-
-      if (prev == list->tail)
-         list->tail = node;
-   }
-   else
-      node = llist_push_front(list, data);
-
-   return node;
-}
-
-void *llist_pop_back(LList *list) {
-   LLNode *to_remove;
-   void   *data;
-
-   if (llist_is_empty(list))
-      return NULL;
-
-   to_remove = list->tail;
-   data = to_remove->data;
-
-   if (list->head == list->tail)
-      list->head = list->tail = NULL;
-   else {
-      LLNode *prev;
-
-      if ((prev = llist_prev(list, list->tail)) != NULL) {
-         prev->next = NULL;
-         list->tail = prev;
-      }
-   }
-
-   llnode_free(to_remove, NULL);
 
    return data;
 }
 
-void *llist_pop_front(LList *list) {
-   LLNode *to_remove;
-   void   *data;
-
-   if (llist_is_empty(list))
-      return NULL;
-
-   to_remove = list->head;
-   data = to_remove->data;
-
-   if (list->head == list->tail)
-      list->head = list->tail = NULL;
+void llist_split(LList *llist, LList *other, LNode *where)
+{
+   if (where->prev)
+      where->prev->next = NULL;
    else
-      list->head = list->head->next;
+      llist->head = NULL;
 
-   llnode_free(to_remove, NULL);
-
-   return data;
+   other->head = where;
+   other->tail = llist->tail;
+   llist->tail = where->prev;
 }
 
-void *llist_remove(LList *list, LLNode *node) {
-   LLNode *prev;
-   void   *data;
-
-   if (llist_is_empty(list) || !node)
-      return NULL;
-
-   if (node == list->head) {
-      data = node->data;
-      list->head = node->next;
-      llnode_free(node, NULL);
+void llist_join(LList *llist, LList *other)
+{
+   if (!llist->tail)
+      *llist = *other;
+   else if (other->head) {
+      llist->tail->next = other->head;
+      other->head->prev = llist->tail;
+      llist->tail = other->tail;
    }
-   else if ((prev = llist_prev(list, node)) != NULL) {
-      data = node->data;
-      prev->next = node->next;
+   other->head = other->tail = NULL;
+}
 
-      if (node == list->tail)
-         list->tail = prev;
+void llist_swap(LNode *node1, LNode *node2)
+{
+   void *tmp = node1->data;
+   node1->data = node2->data;
+   node2->data = tmp;
+}
 
-      llnode_free(node, NULL);
-   }
-   else
-      data = NULL;
+LNode *llist_get_at(LList *llist, size_t index)
+{
+   LNode *node;
+   size_t i = 0;
 
-   return data;
+   for (node = llist->head; node && i < index; node = node->next)
+      i++;
+
+   return node;
+}
+
+size_t llist_len(const LList *llist)
+{
+   LNode *node;
+   size_t len = 0;
+
+   for (node = llist->head; node; node = node->next)
+      len++;
+
+   return len;
 }

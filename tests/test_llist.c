@@ -1,108 +1,148 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "llist.h"
 
-void dbg_front(LList *list) {
-   printf("\n### FORWARDS ###\n");
-
-   bool first = true;
-   bool found_tail = false;
-   for (LLNode *next = NULL; (next = llist_next(list, next)) != NULL;) {
-      printf("%s%d", first ? "" : " -> ", *(int *)next->data);
-      first = false;
-
-      if (next == list->tail)
-         found_tail = true;
-   }
-   if (!first)
-      printf("\n");
-   printf("found_tail: %d\n", (int)found_tail);
+static void test_init_free()
+{
+   LList list;
+   llist_init(&list);
+   assert(llist_is_empty(&list));
+   llist_free(&list);
 }
 
-void dbg_back(LList *list) {
-   printf("\n### BACKWARDS ###\n");
+static void test_push_pop_front_back()
+{
+   LList list;
+   llist_init(&list);
 
-   bool first = true;
-   bool found_head = false;
-   for (LLNode *next = NULL; (next = llist_prev(list, next)) != NULL;) {
-      printf("%s%d", first ? "" : " -> ", *(int *)next->data);
-      first = false;
+   int a = 1, b = 2, c = 3;
+   llist_push_back(&list, &a);
+   llist_push_back(&list, &b);
+   llist_push_front(&list, &c);
 
-      if (next == list->tail)
-         found_head = true;
-   }
-   if (!first)
-      printf("\n");
-   printf("found_head: %d\n", (int)found_head);
+   assert(llist_len(&list) == 3);
+
+   int *out = llist_pop_front(&list);
+   assert(out == &c);
+   out = llist_pop_back(&list);
+   assert(out == &b);
+   out = llist_pop_back(&list);
+   assert(out == &a);
+
+   assert(llist_is_empty(&list));
+   llist_free(&list);
 }
 
-int *get_unique_id() {
-   static int s_global_counter = 0;
-   int       *id = (int *)malloc(sizeof(int));
-   *id = ++s_global_counter;
-   return id;
+static void test_remove()
+{
+   LList list;
+   llist_init(&list);
+
+   int    a = 10, b = 20, c = 30;
+   LNode *n1 = llist_push_back(&list, &a);
+   LNode *n2 = llist_push_back(&list, &b);
+   LNode *n3 = llist_push_back(&list, &c);
+
+   assert(llist_len(&list) == 3);
+
+   int *out = llist_remove(&list, n2);
+   assert(out == &b);
+   assert(llist_len(&list) == 2);
+   assert(llist_get_at(&list, 0) == n1);
+   assert(llist_get_at(&list, 1) == n3);
+
+   llist_free(&list);
 }
 
-int main() {
-   LList list = {0};
+static void test_split_join()
+{
+   LList list, second;
+   llist_init(&list);
+   llist_init(&second);
 
-   LLNode *n1 = llist_push_back(&list, get_unique_id());
-   int    *v1;
-   LLNode *n2 = llist_push_back(&list, get_unique_id());
-   int    *v2;
-   LLNode *n3 = llist_push_front(&list, get_unique_id());
-   int    *v3;
-   /*LLNode *n4 = */ llist_push_front(&list, get_unique_id());
-   int *v4;
-   /*LLNode *n5 = */ llist_push_back(&list, get_unique_id());
-   int *v5;
+   int data[6] = {1, 2, 3, 4, 5, 6};
+   for (int i = 0; i < 6; i++)
+      llist_push_back(&list, &data[i]);
 
-   dbg_front(&list);  //       dbg_back(&list);
+   LNode *where = llist_get_at(&list, 3);
+   llist_split(&list, &second, where);
 
-   v4 = llist_pop_front(&list);
-   free(v4);
-   v5 = llist_pop_back(&list);
-   free(v5);
+   assert(llist_len(&list) == 3);
+   assert(llist_len(&second) == 3);
+   assert(llist_get_at(&list, 2)->data == &data[2]);
+   assert(llist_get_at(&second, 0)->data == &data[3]);
 
-   dbg_front(&list);  //       dbg_back(&list);
+   llist_join(&list, &second);
+   assert(llist_len(&list) == 6);
+   assert(llist_is_empty(&second));
 
-   /*LLNode *n6 = */ llist_insert(&list, llist_prev(&list, n2), get_unique_id());
-   int    *v6;
-   LLNode *n7 = llist_insert(&list, llist_next(&list, n3), get_unique_id());
-   int    *v7;
-   /*LLNode *n8 = */ llist_insert(&list, llist_prev(&list, n1), get_unique_id());
-   int *v8;
+   for (int i = 0; i < 6; i++)
+      assert(llist_get_at(&list, i)->data == &data[i]);
 
-   dbg_front(&list);
-   dbg_back(&list);
+   llist_free(&list);
+}
 
-   v1 = llist_remove(&list, n1);
-   free(v1);
-   v7 = llist_remove(&list, n7);
-   free(v7);
-   v6 = llist_remove(&list, llist_prev(&list, n2));
-   free(v6);
-   v8 = llist_remove(&list, llist_prev(&list, n2));
-   free(v8);
+static void test_swap()
+{
+   LList list;
+   llist_init(&list);
 
-   /*LLNode *n9 = */ llist_insert(&list, llist_prev(&list, n2), get_unique_id());
-   int *v9;
+   int    a = 1, b = 2;
+   LNode *n1 = llist_push_back(&list, &a);
+   LNode *n2 = llist_push_back(&list, &b);
 
-   v2 = llist_remove(&list, list.tail);
-   free(v2);
-   v3 = llist_remove(&list, list.head);
-   free(v3);
-   //v9 = llist_remove(&list, list.head);      free(v9);
-   v9 = llist_remove(&list, list.tail);
-   free(v9);
-   //v__ = llist_remove(&list, n__);      free(v__);
+   llist_swap(n1, n2);
 
-   // v3 = llist_remove(&list, n3);      free(v3);
-   // v8 = llist_remove(&list, n8);      free(v8);
-   // v1 = llist_remove(&list, n1);      free(v1);
-   // v7 = llist_remove(&list, n7);      free(v7);
-   // v6 = llist_remove(&list, n6);      free(v6);
-   // v2 = llist_remove(&list, n2);      free(v2);
+   assert(n1->data == &b);
+   assert(n2->data == &a);
+
+   llist_free(&list);
+}
+
+static void test_free_with()
+{
+   LList list;
+   llist_init(&list);
+
+   char *str1 = strdup("hello");
+   char *str2 = strdup("world");
+
+   llist_push_back(&list, str1);
+   llist_push_back(&list, str2);
+
+   llist_free_with(&list, free);
+}
+
+static void test_get_at()
+{
+   LList list;
+   llist_init(&list);
+
+   int values[4] = {9, 8, 7, 6};
+   for (int i = 0; i < 4; i++)
+      llist_push_back(&list, &values[i]);
+
+   for (int i = 0; i < 4; i++)
+      assert(llist_get_at(&list, i)->data == &values[i]);
+
+   assert(llist_get_at(&list, 4) == NULL);  // out of bounds
+
+   llist_free(&list);
+}
+
+int main()
+{
+   test_init_free();
+   test_push_pop_front_back();
+   test_remove();
+   test_split_join();
+   test_swap();
+   test_free_with();
+   test_get_at();
+
+   printf("✅ All tests passed.\n");
+   return 0;
 }

@@ -1,135 +1,151 @@
 /**
  * @file llist.h
  */
-
 #ifndef __LLIST_H__
 #define __LLIST_H__
 
 #include <stdbool.h>
-#include <stdlib.h>
+#include <stdint.h>
 
 /**
- * @brief linked list's node
+ * @brief double linked list node
  */
-typedef struct LLNode {
-   void          *data; /**< the node's data */
-   struct LLNode *next; /**< the next node */
-} LLNode;
+typedef struct LNode {
+   void         *data;
+   struct LNode *prev;
+   struct LNode *next;
+} LNode;
 
 /**
- * @brief callback to free nodes
- */
-typedef void (*Func_Free)(void *);
-
-/**
- * @brief linked list
+ * @brief double linked list
  */
 typedef struct LList {
-   LLNode *head; /**< beginning of the list */
-   LLNode *tail; /**< end of the list */
+   LNode *head;
+   LNode *tail;
 } LList;
 
 /**
- * @brief initialize the list
- *
- * @param[out] list linked list
+ * @brief callback to free node's data
  */
-void llist_init(LList *list);
+typedef void (*FreeFunc)(void *);
 
 /**
- * @brief free the list
- * 
- * won't free the nodes's data, only the list, if @p func_free is NULL
- * 
- * @param[in,out] list linked list
- * @param[in] func_free callback to free the nodes's data
+ * @brief initialize the list (equivalent to memset)
+ *
+ * @param[out] llist linked list
  */
-void llist_free(LList *list, Func_Free func_free);
+void llist_init(LList *llist);
 
 /**
- * @brief return the node after @p curr
- *
- * if @p curr == NULL, returns the first node
+ * @brief free the list, but not the data it contains
  * 
- * @param[in] list linked list
- * @param[in] curr current node
- * @return the next node
+ * WARNING: this won't free the nodes's data. see `llist_free_with`
+ * 
+ * @param[in,out] llist linked list
  */
-LLNode *llist_next(LList *list, LLNode *curr);
+void llist_free(LList *llist);
 
 /**
- * @brief return the node before @p curr
- *
- * if @p curr == NULL, returns the last node
+ * @brief free the list and the data it contains
  * 
- * @param[in] list linked list
- * @param[in] curr current node
- * @return the previous node
+ * @param[in,out] llist linked list
+ * @param[in] free_func callback to free the nodes's data
  */
-LLNode *llist_prev(LList *list, LLNode *curr);
-
-/**
- * @brief insert node at the end of the list
- *
- * @param[in,out] list linked list
- * @param[in] data node's data
- * @return the node inserted
- */
-LLNode *llist_push_back(LList *list, void *data);
+void llist_free_with(LList *llist, FreeFunc free_func);
 
 /**
  * @brief insert node at the beginning of the list
  *
- * @param[in,out] list linked list
+ * @param[in,out] llist linked list
  * @param[in] data node's data
- * @return the node inserted
+ * @return the node created
  */
-LLNode *llist_push_front(LList *list, void *data);
+LNode *llist_push_front(LList *llist, void *data);
 
 /**
- * @brief insert node after @p prev
- * 
- * if @p prev is NULL, insert at the beginning of the list
+ * @brief insert node at the end of the list
  *
- * @param[in,out] list linked list
- * @param[in] prev node before the one to be inserted
+ * @param[in,out] llist linked list
  * @param[in] data node's data
- * @return the node inserted
+ * @return the node created
  */
-LLNode *llist_insert(LList *list, LLNode *prev, void *data);
-
-/**
- * @brief remove node from the end of the list
- *
- * @param[in,out] list linked list
- * @return the node's data
- */
-void *llist_pop_back(LList *list);
+LNode *llist_push_back(LList *llist, void *data);
 
 /**
  * @brief remove node from the beginning of the list
  *
- * @param[in,out] list linked list
+ * @param[in,out] llist linked list
  * @return the node's data
  */
-void *llist_pop_front(LList *list);
+void *llist_pop_front(LList *llist);
+
+/**
+ * @brief remove node from the end of the list
+ *
+ * @param[in,out] llist linked list
+ * @return the node's data
+ */
+void *llist_pop_back(LList *llist);
 
 /**
  * @brief remove @p node from the list
  *
- * @param[in,out] list linked list
+ * @param[in,out] llist linked list
  * @return the node's data
  */
-void *llist_remove(LList *list, LLNode *node);
+void *llist_remove(LList *llist, LNode *node);
+
+/**
+ * @brief split the index in two
+ * 
+ * @param[in,out] llist original linked list. will contain the list until @p where (exclusive)
+ * @param[out] other will contain the list from @p where (inclusive)
+ * @param[in] where node to split at
+ */
+void llist_split(LList *llist, LList *other, LNode *where);
+
+/**
+ * @brief join @p other to the @p llist
+ * 
+ * @param[in,out] llist linked list to receive @p other
+ * @param[in,out] other linked list to join to @p llist, zeroing out itself
+ */
+void llist_join(LList *llist, LList *other);
+
+/**
+ * @brief swap nodes
+ * 
+ * @param[in,out] node1 first node
+ * @param[in,out] node2 second node
+ */
+void llist_swap(LNode *node1, LNode *node2);
+
+/**
+ * @brief get a node by index
+ * 
+ * @param[in] llist linked list
+ * @param[in] index index
+ * @return the node, or NULL
+ */
+LNode *llist_get_at(LList *llist, size_t index);
 
 /**
  * @brief check if list is empty
  *
- * @param[in] list linked list
+ * @param[in] llist linked list
  * @return boolean
  */
-static inline bool llist_is_empty(LList *list) {
-   return list->head == NULL;
+static inline bool llist_is_empty(LList *llist)
+{
+   return !llist->head;
 }
+
+/**
+ * @brief the list's length
+ *
+ * @param[in] llist linked list
+ * @return length
+ */
+size_t llist_len(const LList *llist);
 
 #endif /* __LLIST_H__ */
