@@ -5,62 +5,9 @@
 #include <math.h>
 #include "jansson.h"
 
-#include "arena.h"
-
-static Arena g_arena = {0};
-
-void arena_init_() {
-   arena_init(&g_arena, 1024 * 8 * 4);
-}
-
-void arena_deinit_() {
-   arena_deinit(&g_arena);
-}
-
-void *arena_alloc_(size_t size) {
-   return arena_alloc(&g_arena, size);
-}
-
-void arena_free_(void *ptr) {}
-
-// #include "arena2.h"
-
-// static Arena2 g_arena2 = {0};
-
-// void arena2_init_() {
-//    arena2_init(&g_arena2, 8192);
-// }
-
-// void arena2_deinit_() {
-//    arena2_deinit(&g_arena2);
-// }
-
-// void *arena2_alloc_(size_t size) {
-//    return arena2_alloc(&g_arena2, size);
-// }
-
-// void arena2_free_(void *ptr) {}
-
-// #include "arena3.h"
-
-// static Arena3 g_arena3 = {0};
-
-// void arena3_init_() {}
-
-// void arena3_deinit_() {
-//    arena3_free(&g_arena3);
-// }
-
-// void *arena3_alloc_(size_t size) {
-//    return arena3_alloc(&g_arena3, size);
-// }
-
-// void arena3_free_(void *ptr) {}
-
-#define NUM_CYCLES 5
-
 // Function to generate a random string
-char *random_string(size_t length) {
+char *random_string(size_t length)
+{
    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
    char      *str;
 
@@ -78,7 +25,8 @@ char *random_string(size_t length) {
    return str;
 }
 
-json_t *random_json_object(int depth, int max_depth) {
+json_t *random_json_object(int depth, int max_depth)
+{
    if (depth > max_depth) {
       switch (rand() % 4) {
          case 0:
@@ -139,7 +87,8 @@ json_t *random_json_object(int depth, int max_depth) {
    return obj;
 }
 
-void generate_random_json(const char *filename, int num_objects, int max_depth) {
+void generate_random_json(const char *filename, int num_objects, int max_depth)
+{
    FILE *file = fopen(filename, "w");
    if (!file) {
       fprintf(stderr, "Failed to open file '%s' for writing.\n", filename);
@@ -174,11 +123,51 @@ void generate_random_json(const char *filename, int num_objects, int max_depth) 
    printf("JSON successfully written to '%s'\n", filename);
 }
 
+#include "arena.h"
+static Arena g_arena = {0};
+
+void arena_init_()
+{
+   arena_init(&g_arena);
+}
+
+void arena_deinit_()
+{
+   arena_deinit(&g_arena);
+}
+
+void *arena_alloc_(size_t size)
+{
+   return arena_alloc(&g_arena, size);
+}
+
+void arena_free_(void *ptr) {}
+
+// #include "arena_2.h"
+// static Arena_2 g_arena_2 = {0};
+
+// void arena_2_init_() {}
+
+// void arena_2_deinit_()
+// {
+//    arena_2_free(&g_arena_2);
+// }
+
+// void *arena_2_alloc_(size_t size)
+// {
+//    return arena_2_alloc(&g_arena_2, size);
+// }
+
+// void arena_2_free_(void *ptr) {}
+
 typedef struct Bench {
    double mean, min, max, stddev;
 } Bench;
 
-void calc_bench(Bench *bench, clock_t *starts, clock_t *ends) {
+#define NUM_CYCLES 5
+
+void calc_bench(Bench *bench, clock_t *starts, clock_t *ends)
+{
    double durations[NUM_CYCLES];
 
    memset(bench, 0, sizeof(*bench));
@@ -211,7 +200,8 @@ void benchmark(
    void (*deinit_func)(),
    void *(*alloc_func)(size_t),
    void (*free_func)(void *)
-) {
+)
+{
    json_set_alloc_funcs(alloc_func, free_func);
 
    clock_t starts[NUM_CYCLES], ends[NUM_CYCLES];
@@ -239,7 +229,8 @@ void benchmark(
    calc_bench(bench, starts, ends);
 }
 
-void print_bench(Bench *bench, const char *what) {
+void print_bench(Bench *bench, const char *what)
+{
    printf("Results for `%s`: \n", what);
    printf("Average: %f secs\n", bench->mean);
    printf("Minimum: %f secs\n", bench->min);
@@ -248,7 +239,8 @@ void print_bench(Bench *bench, const char *what) {
    printf("\n");
 }
 
-int main() {
+int main()
+{
    FILE       *file;
    Bench       bench = {0};
    const char *filename = "benches/test.json";
@@ -259,21 +251,14 @@ int main() {
    else
       fclose(file);
 
-   // load it with callbacks provided and benchmark it
    benchmark(&bench, filename, NULL, NULL, malloc, free);
    print_bench(&bench, "malloc");
 
    benchmark(&bench, filename, arena_init_, arena_deinit_, arena_alloc_, arena_free_);
    print_bench(&bench, "arena");
-   //printf("\n\nTOT: %zu\n\n", arena_tot());
 
-   // benchmark(&bench, filename, arena2_init_, arena2_deinit_, arena2_alloc_, arena2_free_);
-   // print_bench(&bench, "arena2");
-   // printf("\n\nTOT: %zu\n\n", arena2_tot());
-
-   // benchmark(&bench, filename, arena3_init_, arena3_deinit_, arena3_alloc_, arena3_free_);
-   // print_bench(&bench, "arena3");
-   // printf("\n\nTOT: %zu\n\n", arena3_tot());
+   // benchmark(&bench, filename, arena_2_init_, arena_2_deinit_, arena_2_alloc_, arena_2_free_);
+   // print_bench(&bench, "arena_2");
 
    return 0;
 }
