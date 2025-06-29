@@ -52,15 +52,18 @@ ALL_DEPS = $(SRC_DEPS)
 ALL_TARGETS = $(TESTS_TARGETS) $(BENCHES_TARGETS)
 
 # Rules
+.PHONY: all
 all: $(ALL_TARGETS)
 
+.PHONY: tests
 tests: $(TESTS_TARGETS)
 
+.PHONY: benches
 benches: $(BENCHES_TARGETS)
 
 ## Build tests
 $(BUILD_DIR)/%: $(TESTS_DIR)/%.c $(SRC_OBJS) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $< $(SRC_OBJS) -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $< $(SRC_OBJS) $(LDFLAGS) -o $@
 
 ## Build benchmarks
 $(BUILD_DIR)/%: $(BENCHES_DIR)/%.c $(SRC_OBJS) | $(BUILD_DIR)
@@ -75,6 +78,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 ## Run 
+.PHONY: run_%
 run_%: $(BUILD_DIR)/%
 	@echo "Running $<"
 	$<
@@ -82,7 +86,10 @@ run_%: $(BUILD_DIR)/%
 ## Auto-generated dependency files
 -include $(ALL_DEPS)
 
-## Clean
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
+
+.PHONY: cleanall
+cleanall:
+	rm -rf ./build/
