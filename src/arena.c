@@ -5,121 +5,106 @@
 
 #include "arena.h"
 
-// good enough for everything
-#define DEFAULT_ALIGNMENT        8
+// TODO: ask user per alloc?
+// one-size-fits-all alignment
+// beware: types like double and uint64_t can have 8byte alignment even on 32bit
+#define ALIGNMENT_T       uint64_t
+#define DEFAULT_ALIGNMENT sizeof(ALIGNMENT_T)
+
+typedef struct Block {
+   struct Block *next;  // used for free/reset
+
+   uintptr_t   head;  // head of availble memory
+   uintptr_t   end;  // end of available memory
+   ALIGNMENT_T start[];  // beginning of usable allocation
+} Block;
 
 // align `num` to multiple of `alignment`
 #define ALIGN_UP(num, alignment) (((num) + ((alignment) - 1)) & ~((alignment) - 1))
 
+// TODO: ask user?
 // increasing this means better performance but also more waste of memory
-// es. (WORST CASE) the following will always waste the remaining first block
-//     arena_alloc((DEFAULT_MIN_BLOCK_SIZE/2)+1);      // first block
-//     arena_alloc((DEFAULT_MIN_BLOCK_SIZE/2));        // second block
-#define DEFAULT_MIN_BLOCK_SIZE   8192
+// because blocks are discarded (until reset) when they don't have enough space for the chunk requested
+#define MIN_BLOCKS_SIZE   (1024 * 8)
 
-static Block *block_new(size_t size) {
-   Block *blk;
-
-   blk = (Block *)malloc(sizeof(Block) + size);
+inline static Block *block_new(size_t size)
+{
+   Block *blk = (Block *)malloc(sizeof(Block) + size);
    if (!blk)
       return NULL;
 
-   blk->start = (void *)(blk + 1);
-   blk->used = 0;
-   blk->size = size;
    blk->next = NULL;
+   blk->head = (uintptr_t)blk->start;
+   blk->end = (uintptr_t)blk->start + size;
 
    return blk;
 }
 
-static void block_free(Block *blk) {
-   Block *next;
-
+inline static void block_free(Block *blk)
+{
    do {
-      next = blk->next;
+      Block *next = blk->next;
       free(blk);
       blk = next;
    } while (blk);
 }
 
-static void *block_alloc(Block *blk, size_t size, size_t min_block_size) {
-   void *ptr;
+inline static void *block_alloc(Block *blk, size_t size)
+{
+   void *ptr = (void *)blk->head;
+   blk->head += ALIGN_UP(size, DEFAULT_ALIGNMENT);
 
-   if (blk->used + size > blk->size) {
-      Block *new_blk;
+   return ptr;
+}
 
-      new_blk = block_new(size > min_block_size ? size : min_block_size);
-      if (!new_blk)
+void arena_init(Arena *arena)
+{
+   arena->start = arena->head = NULL;
+}
+
+void arena_deinit(Arena *arena)
+{
+   block_free(arena->start);
+}
+
+void *arena_alloc(Arena *arena, size_t size)
+{
+   Block *prev = NULL;
+
+   while (arena->head && arena->head->head + size > arena->head->end) {
+      prev = arena->head;
+      arena->head = arena->head->next;
+   }
+
+   if (!arena->head) {
+      arena->head = block_new(size > MIN_BLOCKS_SIZE ? size : MIN_BLOCKS_SIZE);
+      if (!arena->head)
          return NULL;
 
-      blk->next = new_blk;
-      blk = new_blk;
+      if (prev)
+         prev->next = arena->head;
+      else
+         arena->start = arena->head;
    }
 
-   ptr = (void *)((char *)blk->start + blk->used);
-   blk->used += ALIGN_UP(size, DEFAULT_ALIGNMENT);
-
-   return ptr;
+   return block_alloc(arena->head, size);
 }
 
-void arena_init(Arena *arena, size_t min_block_size) {
-   arena->min_block_size = min_block_size ? min_block_size : DEFAULT_MIN_BLOCK_SIZE;
-   arena->first = block_new(arena->min_block_size);
-
-#if __DEBUG
-   arena->tot_blocks = 1;
-   arena->tot_used = arena->first->size;
-   arena->tot_req = 0;
-#endif
-
-   arena->curr = arena->first;
-}
-
-void arena_deinit(Arena *arena) {
-   block_free(arena->first);
-}
-
-void *arena_alloc(Arena *arena, size_t size) {
-   Block *next;
-   void  *ptr;
-
-   ptr = block_alloc(arena->curr, size, arena->min_block_size);
-   if (!ptr)
-      return NULL;
-
-   // if there's a new block
-   next = arena->curr->next;
-   if (next) {
-      // the new curr is the one with that's less used
-      if (arena->curr->used > next->used)
-         arena->curr = next;
-      else {
-         next->next = arena->first;
-         arena->first = next;
-         arena->curr->next = NULL;
-      }
-
-#if __DEBUG
-      arena->tot_blocks++;
-      arena->tot_used += next->size;
-#endif
-   }
-
-#if __DEBUG
-   arena->tot_req += size;
-#endif
-
-   return ptr;
-}
-
-void *arena_realloc(Arena *arena, size_t new_size, void *old_ptr, size_t old_size) {
-   void *new_ptr;
-
+void *arena_realloc(Arena *arena, size_t new_size, void *old_ptr, size_t old_size)
+{
    if (new_size <= old_size)
       return old_ptr;
 
-   new_ptr = arena_alloc(arena, new_size);
+   void *new_ptr = arena_alloc(arena, new_size);
    memcpy(new_ptr, old_ptr, old_size);
 
    return new_ptr;
+}
+
+void arena_reset(Arena *arena)
+{
+   for (Block *blk = arena->start; blk; blk = blk->next) {
+      blk->head = (uintptr_t)blk->start;
+   }
+   arena->head = arena->start;
 }
