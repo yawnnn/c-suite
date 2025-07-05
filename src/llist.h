@@ -98,11 +98,11 @@ void *llist_remove(LList *llist, LNode *node);
 /**
  * @brief split the index in two
  * 
- * @param[in,out] llist original linked list. will contain the list until @p where (exclusive)
- * @param[out] other will contain the list from @p where (inclusive)
- * @param[in] where node to split at
+ * @param[in,out] llist original linked list. will contain the list until @p at (exclusive)
+ * @param[out] other will contain the list from @p at (inclusive)
+ * @param[in] at node to split at
  */
-void llist_split(LList *llist, LList *other, LNode *where);
+void llist_split(LList *llist, LList *other, LNode *at);
 
 /**
  * @brief join @p other to the @p llist

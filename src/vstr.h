@@ -1,12 +1,11 @@
 /**
  * @file vstr.h
  */
-
 #ifndef __VSTR_H__
 #define __VSTR_H__
 
 #include <stdbool.h>
-#include <stdlib.h>
+#include <stddef.h>
 
 /**
  * @brief variable length string
@@ -22,83 +21,85 @@ typedef struct Vstr {
  *
  * the Vstr is not allocated, therefore vstr_data() returns NULL
  *
- * @param[out] s Vstr
+ * @param[out] vs Vstr
  */
-void vstr_new(Vstr *s);
+void vstr_new(Vstr *vs);
 
 /**
  * @brief new Vstr with reserved space
  *
  * the Vstr has 0 length but is allocated, therefore vstr_data() is valid
  *
- * @param[out] s Vstr
+ * @param[out] vs Vstr
  * @param[in] len minimum number of characters to reserve memory for
  */
-void vstr_new_with(Vstr *s, size_t len);
+void vstr_new_with(Vstr *vs, size_t len);
 
 /**
  * @brief new Vstr from c-style string
  *
- * @param[out] s Vstr
+ * @param[out] vs Vstr
  * @param[in] source source c-style string
  */
-void vstr_from(Vstr *s, const char *source);
+void vstr_from(Vstr *vs, const char *source);
 
 /**
  * @brief release memory
  *
- * @param[in,out] s Vstr
+ * @param[in,out] vs Vstr
  */
-void vstr_free(Vstr *s);
+void vstr_free(Vstr *vs);
 
 /**
  * @brief shorten the Vstr to the specified length
  *
  * if @p new_len is >= that the current length, this has no effect
  * 
- * @param[in,out] s Vstr
+ * @param[in,out] vs Vstr
  * @param[in] new_len new length
  */
-void vstr_truncate(Vstr *s, size_t new_len);
+void vstr_truncate(Vstr *vs, size_t new_len);
 
 /**
  * @brief reserve memory ahead of time
  *
- * @param[in,out] s Vstr
+ * @param[in,out] vs Vstr
  * @param[in] len minimum number of characters to reserve memory for
  */
-void vstr_reserve(Vstr *s, size_t len);
+void vstr_reserve(Vstr *vs, size_t len);
 
 /**
  * @brief shrink allocated memory to what is exactly needed for length
  *
- * @param[in,out] s Vstr
+ * @param[in,out] vs Vstr
  */
-void vstr_shrink_to_fit(Vstr *s);
+void vstr_shrink_to_fit(Vstr *vs);
 
 /**
  * @brief return the underlying c-style string, or NULL
  *
- * @param[in] s Vstr
+ * @param[in] vs Vstr
  * @return c-style string or NULL
  */
-static inline char *vstr_data(Vstr *s) {
-   if (s->cap)  // len could be 0, but still allocated because of the null-terminating character
-      return s->ptr;
+static inline char *vstr_data(Vstr *vs)
+{
+   if (vs->cap)  // len could be 0, but still allocated because of the null-terminating character
+      return vs->ptr;
    return NULL;
 }
 
 /**
  * @brief return the underlying c-style string starting at @p pos, or NULL
  *
- * @param[in] s Vstr
+ * @param[in] vs Vstr
  * @param[in] pos start position
  * @return c-style string or NULL
  */
-static inline char *vstr_data_from(Vstr *s, size_t pos) {
-   // asking for the position from the null-terminating char is valid, so i hate to check s->cap too
-   if (pos <= s->len && s->cap)
-      return s->ptr + pos;
+static inline char *vstr_data_from(Vstr *vs, size_t pos)
+{
+   // string can be only null-terminating char, so i have to check cap
+   if (pos <= vs->len && vs->cap)
+      return vs->ptr + pos;
    return NULL;
 }
 
@@ -155,11 +156,12 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num);
 /**
  * @brief if Vstr is empty
  *
- * @param[in] s Vstr
+ * @param[in] vs Vstr
  * @return boolean
  */
-static inline bool vstr_is_empty(Vstr *s) {
-   return s->len == 0;
+static inline bool vstr_is_empty(Vstr *vs)
+{
+   return vs->len == 0;
 }
 
 #endif /* __VSTR_H__ */
