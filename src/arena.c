@@ -5,28 +5,45 @@
 
 #include "arena.h"
 
-// TODO: ask user per alloc?
-// one-size-fits-all alignment
-// beware: types like double and uint64_t can have 8byte alignment even on 32bit
+/**
+ * @brief generic alignment
+ * 
+ * beware: types like double and uint64_t can have 8byte alignment even on 32bit
+ */
 #define ALIGNMENT_T       uint64_t
 #define DEFAULT_ALIGNMENT sizeof(ALIGNMENT_T)
 
+/**
+ * @brief tracks block of memory allocated
+ */
 typedef struct Block {
-   struct Block *next;  // used for free/reset
+   struct Block *next; /**< used for free/reset */
 
-   uintptr_t   head;  // head of availble memory
-   uintptr_t   end;  // end of available memory
-   ALIGNMENT_T start[];  // beginning of usable allocation
+   uintptr_t   head; /**< head of availble memory */
+   uintptr_t   end; /**< end of available memory */
+   ALIGNMENT_T start[]; /**< beginning of usable allocation */
 } Block;
 
-// align `num` to multiple of `alignment`
+/**
+ * @brief align @p num to multiple of @p alignment
+ */
 #define ALIGN_UP(num, alignment) (((num) + ((alignment) - 1)) & ~((alignment) - 1))
 
-// TODO: ask user?
-// increasing this means better performance but also more waste of memory
-// because blocks are discarded (until reset) when they don't have enough space for the chunk requested
-#define MIN_BLOCKS_SIZE   (1024 * 8)
+/**
+ * @brief minimum block asked to malloc at a time
+ * 
+ * increasing this means better performance but also more (potential) waste of memory
+ * because blocks are discarded (until reset) when they don't have enough space for the chunk requested
+ */
+#define MIN_BLOCKS_SIZE          (1024 * 8)
 
+/**
+ * @brief alloc and init a block
+ * 
+ * @param[in] size block size
+ * 
+ * @return allocated block
+ */
 inline static Block *block_new(size_t size)
 {
    Block *blk = (Block *)malloc(sizeof(Block) + size);
@@ -40,6 +57,11 @@ inline static Block *block_new(size_t size)
    return blk;
 }
 
+/**
+ * @brief free block
+ * 
+ * @param[in,out] blk block to be freed
+ */
 inline static void block_free(Block *blk)
 {
    do {
@@ -49,6 +71,14 @@ inline static void block_free(Block *blk)
    } while (blk);
 }
 
+/**
+ * @brief allocate a chunk from inside a block
+ * 
+ * @param[in,out] blk block
+ * @param[in] size size of the chunk
+ * 
+ * @return allocated chunk
+ */
 inline static void *block_alloc(Block *blk, size_t size)
 {
    void *ptr = (void *)blk->head;

@@ -1,29 +1,35 @@
 #include "vstr.h"
 
+#include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief amount to grow underlying memory to
+ */
 #define GROWTH_FACTOR (2UL)
 
 /**
  * @brief allocate Vstr.
  * 
- * @param s Vstr
- * @param nbytes number of bytes required
+ * @param[in,out] vs Vstr
+ * @param[in] nbytes number of bytes required
  */
-inline static void vstr_alloc(Vstr *s, size_t nbytes) {
-   s->ptr = malloc(nbytes);
-   s->cap = nbytes;
+inline static void vstr_alloc(Vstr *vs, size_t nbytes)
+{
+   vs->ptr = malloc(nbytes);
+   vs->cap = nbytes;
 }
 
 /**
  * @brief reallocate Vstr.
  * 
- * @param s Vstr
- * @param nbytes number of bytes required
+ * @param[in,out] vs Vstr
+ * @param[in] nbytes number of bytes required
  */
-inline static void vstr_realloc(Vstr *s, size_t nbytes) {
-   s->ptr = realloc(s->ptr, nbytes);
-   s->cap = nbytes;
+inline static void vstr_realloc(Vstr *vs, size_t nbytes)
+{
+   vs->ptr = realloc(vs->ptr, nbytes);
+   vs->cap = nbytes;
 }
 
 /**
@@ -32,61 +38,70 @@ inline static void vstr_realloc(Vstr *s, size_t nbytes) {
  * if shrink, realloc by exact number
  * if grow  , realloc by GROWTH_FACTOR when possible, otherwise exact number
  * 
- * @param s Vstr
- * @param nbytes number of bytes required
+ * @param[in,out] vs Vstr
+ * @param[in] nbytes number of bytes required
  */
-static void vstr_resize(Vstr *s, size_t nbytes) {
-   if (s->cap) {
-      if (nbytes < s->cap || nbytes > s->cap * GROWTH_FACTOR)
-         vstr_realloc(s, nbytes);
-      else if (nbytes > s->cap)
-         vstr_realloc(s, s->cap * GROWTH_FACTOR);
+static void vstr_resize(Vstr *vs, size_t nbytes)
+{
+   if (vs->cap) {
+      if (nbytes < vs->cap || nbytes > vs->cap * GROWTH_FACTOR)
+         vstr_realloc(vs, nbytes);
+      else if (nbytes > vs->cap)
+         vstr_realloc(vs, vs->cap * GROWTH_FACTOR);
    }
    else
-      vstr_alloc(s, nbytes > GROWTH_FACTOR ? nbytes : GROWTH_FACTOR);
+      vstr_alloc(vs, nbytes > GROWTH_FACTOR ? nbytes : GROWTH_FACTOR);
 }
 
-void vstr_new(Vstr *s) {
-   s->cap = 0;
-   s->len = 0;
+void vstr_new(Vstr *vs)
+{
+   vs->cap = 0;
+   vs->len = 0;
 }
 
-void vstr_new_with(Vstr *s, size_t len) {
-   vstr_new(s);
-   vstr_reserve(s, len);
-   vstr_cpy(s, "");
+void vstr_new_with(Vstr *vs, size_t len)
+{
+   vstr_new(vs);
+   vstr_reserve(vs, len);
+   vstr_cpy(vs, "");
 }
 
-void vstr_from(Vstr *s, const char *source) {
-   vstr_new(s);
-   vstr_cpy(s, source);
+void vstr_from(Vstr *vs, const char *source)
+{
+   vstr_new(vs);
+   vstr_cpy(vs, source);
 }
 
-void vstr_free(Vstr *s) {
-   if (s->cap)
-      free(s->ptr);
-   s->cap = 0;
-   s->len = 0;
+void vstr_free(Vstr *vs)
+{
+   if (vs->cap)
+      free(vs->ptr);
+   vs->cap = 0;
+   vs->len = 0;
 }
 
-void vstr_truncate(Vstr *s, size_t new_len) {
-   if (new_len < s->len) {
-      s->len = new_len;
-      s->ptr[new_len] = '\0';
+void vstr_truncate(Vstr *vs, size_t new_len)
+{
+   if (new_len < vs->len) {
+      vs->len = new_len;
+      vs->ptr[new_len] = '\0';
    }
 }
 
-void vstr_reserve(Vstr *s, size_t len) {
-   if (len + 1 > s->cap)
-      vstr_resize(s, len + 1);
+void vstr_reserve(Vstr *vs, size_t len)
+{
+   if (len + 1 > vs->cap)
+      vstr_resize(vs, len + 1);
 }
 
-void vstr_shrink_to_fit(Vstr *s) {
-   if (s->cap > s->len + 1)
-      vstr_resize(s, s->len + 1);
+void vstr_shrink_to_fit(Vstr *vs)
+{
+   if (vs->cap > vs->len + 1)
+      vstr_resize(vs, vs->len + 1);
 }
 
-void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
+void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num)
+{
    if (pos <= dest->len) {
       size_t new_len = dest->len + num;
 
@@ -98,14 +113,16 @@ void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num) {
    }
 }
 
-char *vstr_cpy(Vstr *dest, const char *source) {
+char *vstr_cpy(Vstr *dest, const char *source)
+{
    vstr_truncate(dest, 0);
    vstr_insert(dest, 0, source, strlen(source));
 
    return dest->ptr;
 }
 
-char *vstr_ncpy(Vstr *dest, const char *source, size_t num) {
+char *vstr_ncpy(Vstr *dest, const char *source, size_t num)
+{
    size_t src_len;
 
    src_len = strlen(source);
@@ -117,13 +134,15 @@ char *vstr_ncpy(Vstr *dest, const char *source, size_t num) {
    return dest->ptr;
 }
 
-char *vstr_cat(Vstr *dest, const char *source) {
+char *vstr_cat(Vstr *dest, const char *source)
+{
    vstr_insert(dest, dest->len, source, strlen(source));
 
    return dest->ptr;
 }
 
-char *vstr_ncat(Vstr *dest, const char *source, size_t num) {
+char *vstr_ncat(Vstr *dest, const char *source, size_t num)
+{
    size_t src_len;
 
    src_len = strlen(source);

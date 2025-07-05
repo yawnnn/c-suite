@@ -8,6 +8,8 @@
         "vector": "cpp",
         "xhash": "cpp",
         "xstring": "cpp",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "stddef.h": "c",
+        "fixed_buffer.h": "c"
     }
 }

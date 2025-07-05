@@ -130,16 +130,16 @@ void *llist_remove(LList *llist, LNode *node)
    return data;
 }
 
-void llist_split(LList *llist, LList *other, LNode *where)
+void llist_split(LList *llist, LList *other, LNode *at)
 {
-   if (where->prev)
-      where->prev->next = NULL;
+   if (at->prev)
+      at->prev->next = NULL;
    else
       llist->head = NULL;
 
-   other->head = where;
+   other->head = at;
    other->tail = llist->tail;
-   llist->tail = where->prev;
+   llist->tail = at->prev;
 }
 
 void llist_join(LList *llist, LList *other)

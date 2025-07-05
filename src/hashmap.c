@@ -7,7 +7,8 @@
 //////////////////////////////////////////////////////////////////////////////////////
 
 // Perl's hash function
-static hash_t hash_func_generic(const void *key, size_t size) {
+static hash_t hash_func_generic(const void *key, size_t size)
+{
    register const uint8_t *data;
    register size_t         i;
    register hash_t         hash;
@@ -35,7 +36,8 @@ static hash_t hash_func_generic(const void *key, size_t size) {
 // HashNode
 //////////////////////////////////////////////////////////////////////////////////////
 
-inline static void hashnode_get(HashMap *map, HashNode *node, void *value) {
+inline static void hashnode_get(HashMap *map, HashNode *node, void *value)
+{
    memcpy(value, node->value, map->value_size);
 }
 
@@ -43,14 +45,16 @@ inline static void hashnode_get(HashMap *map, HashNode *node, void *value) {
 // HashBucket
 //////////////////////////////////////////////////////////////////////////////////////
 
-static void hashbucket_free(HashBucket *bucket) {
+static void hashbucket_free(HashBucket *bucket)
+{
    while (bucket->len--)
       free(bucket->ptr[bucket->len].value);
    free(bucket->ptr);
    bucket->cap = bucket->len = 0;
 }
 
-inline static void hashbucket_grow(HashBucket *bucket) {
+inline static void hashbucket_grow(HashBucket *bucket)
+{
    if (bucket->len == bucket->cap) {
       if (bucket->cap) {
          bucket->cap = bucket->cap * 2;
@@ -63,7 +67,8 @@ inline static void hashbucket_grow(HashBucket *bucket) {
    }
 }
 
-static HashNode *hashbucket_find(HashBucket *bucket, hash_t hash) {
+static HashNode *hashbucket_find(HashBucket *bucket, hash_t hash)
+{
    HashNode *node;
 
    for (size_t i = 0; i < bucket->len; i++) {
@@ -76,7 +81,8 @@ static HashNode *hashbucket_find(HashBucket *bucket, hash_t hash) {
    return NULL;
 }
 
-static void hashbucket_push(HashMap *map, HashBucket *bucket, hash_t hash, void *key, void *value) {
+static void hashbucket_push(HashMap *map, HashBucket *bucket, hash_t hash, void *key, void *value)
+{
    HashNode *node;
 
    hashbucket_grow(bucket);
@@ -89,14 +95,9 @@ static void hashbucket_push(HashMap *map, HashBucket *bucket, hash_t hash, void 
    memcpy(node->value, value, map->value_size);
 }
 
-static bool hashbucket_insert(
-   HashMap    *map,
-   HashBucket *bucket,
-   hash_t      hash,
-   void       *key,
-   void       *value,
-   void       *prev
-) {
+static bool
+hashbucket_insert(HashMap *map, HashBucket *bucket, hash_t hash, void *key, void *value, void *prev)
+{
    HashNode *found;
 
    found = hashbucket_find(bucket, hash);
@@ -111,7 +112,8 @@ static bool hashbucket_insert(
    return found != NULL;
 }
 
-static bool hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, void *prev) {
+static bool hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, void *prev)
+{
    HashNode *node;
 
    node = hashbucket_find(bucket, hash);
@@ -129,7 +131,8 @@ static bool hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, voi
 // HashMap
 //////////////////////////////////////////////////////////////////////////////////////
 
-static void hashmap_grow(HashMap *map) {
+static void hashmap_grow(HashMap *map)
+{
    // nbucket is always kept at a power of 2
    if (map->nbucket) {
       size_t old_nbucket = map->nbucket;
@@ -144,7 +147,8 @@ static void hashmap_grow(HashMap *map) {
    }
 }
 
-inline static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash) {
+inline static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash)
+{
    size_t pos;
 
    if (!map->nbucket)
@@ -155,7 +159,8 @@ inline static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash) {
    return &map->buckets[pos];
 }
 
-void hashmap_new(HashMap *map, size_t key_size, size_t value_size) {
+void hashmap_new(HashMap *map, size_t key_size, size_t value_size)
+{
    map->buckets = NULL;
    map->nbucket = map->nitem = 0;
 
@@ -165,14 +170,16 @@ void hashmap_new(HashMap *map, size_t key_size, size_t value_size) {
    map->hash_func = hash_func_generic;
 }
 
-void hashmap_free(HashMap *map) {
+void hashmap_free(HashMap *map)
+{
    while (map->nbucket--)
       hashbucket_free(&map->buckets[map->nbucket]);
    free(map->buckets);
    memset(map, 0, sizeof(HashMap));
 }
 
-bool hashmap_insert(HashMap *map, void *key, void *value, void *prev) {
+bool hashmap_insert(HashMap *map, void *key, void *value, void *prev)
+{
    HashBucket *bucket;
    hash_t      hash;
 
@@ -191,7 +198,8 @@ bool hashmap_insert(HashMap *map, void *key, void *value, void *prev) {
    return found;
 }
 
-bool hashmap_remove(HashMap *map, void *key, void *value) {
+bool hashmap_remove(HashMap *map, void *key, void *value)
+{
    HashBucket *bucket;
    hash_t      hash;
 
@@ -208,7 +216,8 @@ bool hashmap_remove(HashMap *map, void *key, void *value) {
    return found;
 }
 
-bool hashmap_get(HashMap *map, void *key, void *value) {
+bool hashmap_get(HashMap *map, void *key, void *value)
+{
    HashBucket *bucket;
    HashNode   *node;
    hash_t      hash;
