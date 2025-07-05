@@ -32,6 +32,21 @@ typedef struct SVec {
 /**
  * MARK: SVec
  */
+
+SVec *svec_from(SVec *svec, const char *s, ...)
+{
+   memset(svec, 0, sizeof(*svec));
+
+   va_list args;
+   va_start(args, s);
+   for (; s; s = va_arg(args, const char *)) {
+      svec_push(svec, s);
+   }
+   va_end(args);
+
+   return svec;
+}
+
 void svec_free(SVec *svec)
 {
    while (svec->len--)
@@ -55,13 +70,13 @@ void svec_reserve(SVec *svec, size_t nelem)
    }
 }
 
-void svec_insert_n(SVec *svec, size_t nelem, const char **elems, size_t pos)
+void svec_insert_n(SVec *svec, size_t pos, const char **elems, size_t nelem)
 {
    if (pos > svec->len)
       return;
 
    svec_reserve(svec, svec->len + nelem);
-   memmove(&svec->ptr[pos + nelem], &svec->ptr[pos], svec->len - pos);
+   memmove(&svec->ptr[pos + nelem], &svec->ptr[pos], (svec->len - pos) * sizeof(char *));
 
    for (size_t i = 0; i < nelem; i++) {
       svec->ptr[pos] = nob_strdup(elems[i]);
@@ -70,17 +85,17 @@ void svec_insert_n(SVec *svec, size_t nelem, const char **elems, size_t pos)
    svec->len += nelem;
 }
 
-void svec_insert(SVec *svec, const char *elem, size_t pos)
+void svec_insert(SVec *svec, size_t pos, const char *elem)
 {
-   svec_insert_n(svec, 1, &elem, pos);
+   svec_insert_n(svec, pos, &elem, 1);
 }
 
 void svec_push(SVec *svec, const char *elem)
 {
-   svec_insert_n(svec, 1, &elem, svec->len);
+   svec_insert_n(svec, svec->len, &elem, 1);
 }
 
-void svec_remove_n(SVec *svec, size_t pos, size_t nelem, char **elems, size_t max_len)
+void svec_remove_n(SVec *svec, size_t pos, char **elems, size_t nelem, size_t max_len)
 {
    if (pos + nelem - 1 >= svec->len)
       return;
@@ -92,18 +107,18 @@ void svec_remove_n(SVec *svec, size_t pos, size_t nelem, char **elems, size_t ma
    }
 
    if (pos + nelem < svec->len)
-      memmove(&svec->ptr[pos], &svec->ptr[pos + nelem], svec->len - (pos + nelem));
+      memmove(&svec->ptr[pos], &svec->ptr[pos + nelem], (svec->len - (pos + nelem)) * sizeof(char *));
    svec->len -= nelem;
 }
 
 void svec_remove(SVec *svec, size_t pos, char *elem, size_t max_arg)
 {
-   svec_remove_n(svec, pos, 1, &elem, max_arg);
+   svec_remove_n(svec, pos, &elem, 1, max_arg);
 }
 
 void svec_pop(SVec *svec, char *elem, size_t max_arg)
 {
-   svec_remove_n(svec, svec->len - 1, 1, &elem, max_arg);
+   svec_remove_n(svec, svec->len - 1, &elem, 1, max_arg);
 }
 
 char *svec_get(SVec *svec, size_t pos)
@@ -118,6 +133,24 @@ void svec_set(SVec *svec, size_t pos, const char *elem)
    if (pos < svec->len) {
       free(svec->ptr[pos]);
       svec->ptr[pos] = nob_strdup(elem);
+   }
+}
+
+void svec_merge(SVec *svec, SVec *other)
+{
+   svec_reserve(svec, svec->len + other->len);
+   memcpy(&svec->ptr[svec->len], other->ptr, other->len * sizeof(char *));
+   other->len = 0;
+}
+
+void svec_split(SVec *svec, SVec *other, size_t at)
+{
+   memset(other, 0, sizeof(*other));
+
+   if (at < svec->len) {
+      svec_reserve(other, svec->len - at);
+      memcpy(other->ptr, &svec->ptr[at], (svec->len - at) * sizeof(char *));
+      svec->len = at;
    }
 }
 
@@ -142,31 +175,77 @@ void svec_reset(SVec *svec)
    svec->len = 0;
 }
 
-SVec *svec_from(SVec *svec, const char *s, ...)
+/**
+ * MARK: Logging
+ */
+static int _nob_disable_log = 0;
+
+void nob_log_off()
 {
-   svec_reset(svec);
-
-   va_list args;
-   va_start(args, s);
-   for (; s; s = va_arg(args, const char *)) {
-      svec_push(svec, s);
-   }
-   va_end(args);
-
-   return svec;
+   _nob_disable_log++;
 }
 
-SVec *svec_tmp()
+void nob_log_on()
 {
-   static SVec svec = {0};
-   return &svec;
+   if (_nob_disable_log)
+      _nob_disable_log--;
+}
+
+#define nob_log(lvl, msg)       _nob_log(__FILE__, __LINE__, __func__, (lvl), (msg))
+#define nob_logf(lvl, fmt, ...) _nob_logf(__FILE__, __LINE__, __func__, (lvl), (fmt), __VA_ARGS__)
+
+void _nob_logf(const char *file, int line, const char *func, LogLvl lvl, const char *fmt, ...)
+{
+   if (_nob_disable_log)
+      return;
+
+   switch (lvl) {
+      case LOG_INFO:
+         fprintf(stderr, "[I] ");
+         break;
+      case LOG_WARNING:
+         fprintf(stderr, "[W] ");
+         break;
+      case LOG_ERROR:
+         fprintf(stderr, "[E] ");
+         break;
+      case LOG_DONT_LOG:
+      default:
+         return;
+   }
+
+   fprintf(stderr, "%s::%s::%d: ", file, func, line);
+
+   va_list args;
+   va_start(args, fmt);
+   vfprintf(stderr, fmt, args);
+   va_end(args);
+   fprintf(stderr, "\n");
+}
+
+void _nob_log(const char *file, int line, const char *func, LogLvl lvl, const char *msg)
+{
+   _nob_logf(file, line, func, lvl, msg);
 }
 
 /**
- * MARK: OS-specific
+ * MARK: Generic utils
  */
 
-char *nob_win_errmsg()
+char *nob_strdup(const char *str)
+{
+   size_t len = strlen(str);
+   char  *dup = (char *)malloc(len + 1);
+   return (char *)memcpy(dup, str, len + 1);
+}
+
+char nob_strncpy(char *dest, char *source, size_t num)
+{
+   strncpy(dest, source, num);
+   dest[num] = '\0';
+}
+
+char *nob_msgerr()
 {
 #define WIN_ERRMSG_SIZE 512
    static char errmsg[WIN_ERRMSG_SIZE];
@@ -189,80 +268,20 @@ char *nob_win_errmsg()
 }
 
 /**
- * MARK: Nob utility
+ * MARK: Filesystem API
  */
-
-char *nob_strdup(const char *str)
-{
-   size_t len = strlen(str);
-   char  *dup = (char *)malloc(len + 1);
-   return (char *)memcpy(dup, str, len + 1);
-}
-
-char nob_strncpy(char *dest, char *source, size_t num)
-{
-   strncpy(dest, source, num);
-   dest[num] = '\0';
-}
-
-LogLvl nob_log_cv_priority(Priority priority)
-{
-   switch (priority) {
-      case PY_NECESSARY:
-         return LOG_ERROR;
-      case PY_CHECK:
-         return LOG_DONT_LOG;
-      default:
-         return LOG_INFO;
-   }
-}
-
-#define nob_log(lvl, msg)       _nob_log((lvl), __LINE__, __func__, (msg))
-#define nob_logf(lvl, fmt, ...) _nob_logf((lvl), __LINE__, __func__, (fmt), __VA_ARGS__)
-
-void _nob_logf(LogLvl lvl, int line, const char *func, const char *fmt, ...)
-{
-   switch (lvl) {
-      case LOG_INFO:
-         fprintf(stderr, "[INFO] ");
-         break;
-      case LOG_WARNING:
-         fprintf(stderr, "[WARNING] ");
-         break;
-      case LOG_ERROR:
-         fprintf(stderr, "[ERROR] ");
-         break;
-      case LOG_DONT_LOG:
-      default:
-         return;
-   }
-
-   fprintf(stderr, "%s::%d: ", func, line);
-
-   va_list args;
-   va_start(args, fmt);
-   vfprintf(stderr, fmt, args);
-   va_end(args);
-   fprintf(stderr, "\n");
-}
-
-void _nob_log(LogLvl lvl, int line, const char *func, const char *msg)
-{
-   _nob_logf(lvl, line, func, msg);
-}
-
-int nob_get_mtime(Priority priority, const char *path, FILETIME *mtime)
+int nob_get_mtime(const char *path, FILETIME *mtime)
 {
    HANDLE fd =
       CreateFileA(path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
    if (fd == INVALID_HANDLE_VALUE) {
-      nob_log(nob_log_cv_priority(priority), nob_win_errmsg());
+      nob_log(LOG_ERROR, nob_msgerr());
       return -1;
    }
    WINBOOL okay = GetFileTime(fd, NULL, NULL, mtime);
    CloseHandle(fd);
    if (!okay) {
-      nob_log(nob_log_cv_priority(priority), nob_win_errmsg());
+      nob_log(LOG_ERROR, nob_msgerr());
       return -1;
    }
    return 0;
@@ -299,108 +318,64 @@ bool nob_mkdir(const char *path)
    return true;
 }
 
-typedef struct OpenDir {
-   HANDLE           find_hnd;
+#define LS_ONLY_DIRS  0x01
+#define LS_ONLY_FILES 0x02
+
+int nob_ls(const char *parent, SVec *children, int flags)
+{
+   int  err = 0;
+   char pattern[MAX_PATH];
+
+   snprintf(pattern, MAX_PATH, "%s\\*", parent);
+
    WIN32_FIND_DATAA find_data;
-   char             name[MAX_PATH + 1];
-} OpenDir;
-
-OpenDir *opendir(const char *dirpath)
-{
-   char buffer[MAX_PATH];
-   snprintf(buffer, MAX_PATH, "%s\\*", dirpath);
-
-   OpenDir *dir = (OpenDir *)calloc(1, sizeof(OpenDir));
-
-   dir->find_hnd = FindFirstFileA(buffer, &dir->find_data);
-   if (dir->find_hnd == INVALID_HANDLE_VALUE) {
-      nob_log(LOG_ERROR, nob_win_errmsg());
-      free(dir);
-      dir = NULL;
+   HANDLE           find_hnd = FindFirstFileA(pattern, &find_data);
+   if (find_hnd == INVALID_HANDLE_VALUE) {
+      nob_log(LOG_ERROR, nob_msgerr());
+      return -1;
    }
 
-   return dir;
-}
+   svec_reset(children);
+   do {
+      if (!flags
+          || ((flags & LS_ONLY_DIRS) && (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+          || ((flags & LS_ONLY_FILES) && !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)))
+      {
+         svec_push(children, find_data.cFileName);
+      }
+   } while (FindNextFileA(find_hnd, &find_data));
 
-char *readdir(OpenDir *dirp)
-{
-   if (!FindNextFileA(dirp->find_hnd, &dirp->find_data)) {
-      if (GetLastError() != ERROR_NO_MORE_FILES)
-         nob_log(LOG_ERROR, nob_win_errmsg());
-      return NULL;
-   }
-
-   nob_strncpy(dirp->name, dirp->find_data.cFileName, STR_SIZE(dirp->name));
-
-   return dirp->name;
-}
-
-int closedir(OpenDir *dirp)
-{
-   int err = 0;
-
-   if (!FindClose(dirp->find_hnd)) {
-      nob_log(LOG_WARNING, nob_win_errmsg());
+   if (GetLastError() != ERROR_NO_MORE_FILES) {
+      nob_log(LOG_ERROR, nob_msgerr());
       err = -1;
    }
 
-   free(dirp);
+   if (!FindClose(find_hnd)) {
+      nob_log(LOG_WARNING, nob_msgerr());
+      err = -1;
+   }
 
    return err;
 }
 
-#define LS_ONLY_DIRS  0x01
-#define LS_ONLY_FILES 0x02
-
-bool nob_ls(const char *parent, SVec *children, int flags)
+int nob_cp(const char *src, const char *dst)
 {
-   bool     result = true;
-   OpenDir *dir = NULL;
+   int err = 0;
 
-   dir = opendir(parent);
-   if (!dir)
-      return false;
-
-   errno = 0;
-   DirEntry *ent = readdir(dir);
-   while (ent != NULL) {
-      nob_da_append(children, nob_temp_strdup(ent->name));
-      ent = readdir(dir);
+   if (!CopyFileA(src, dst, FALSE)) {
+      nob_log(LOG_ERROR, nob_msgerr());
+      err = -1;
    }
 
-   if (errno != 0) {
-#ifdef _WIN32
-      nob_log(
-         NOB_ERROR,
-         "Could not read directory %s: %s",
-         parent,
-         nob_win32_error_message(GetLastError())
-      );
-#else
-      nob_log(NOB_ERROR, "Could not read directory %s: %s", parent, strerror(errno));
-#endif  // _WIN32
-      nob_return_defer(false);
-   }
-
-defer:
-   if (dir)
-      closedir(dir);
-   return result;
+   return err;
 }
 
-bool nob_cp(const char *src, const char *dst)
+int nob_del(const char *path)
 {
-   char *ps;
-   if ((ps = strstr(src, "*")) != NULL) {
+   if (!DeleteFileA(path)) {
+      nob_log(LOG_ERROR, nob_msgerr());
+      return -1;
    }
-   else {
-      if (!CopyFileA(src, dst, FALSE))
-         nob_win_errmsg();
-   }
-}
 
-void nob_compile(SVec *prereqs, SVec *recipe)
-{
-   svec_reset(prereqs);
-   svec_reset(recipe);
+   return 0;
 }
