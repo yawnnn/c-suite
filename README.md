@@ -1,13 +1,12 @@
 # C Suite
 A bunch of useful stuff for C codebases  
-Please note that this aims to provide reasonable usability and performance, but is still meant to be a starting point (at best), if specific features or cutting edge performance are required
+This should work pretty well, but keep in mind that it's really an hobby project.
+Should compile with any C99-compliant compiler or non-ancient MSVC
 
-## Collections
-- [x] variable length array
-- [x] variable length string
-- [x] linked list
+## TODO
+- [x] vec - variable length array
+- [x] vstr - variable length string
+- [x] llst - linked list
+- [x] arena - arena allocator
+- [x] fixed_buffer - fixed buffer allocator
 - [ ] hashmap/hashset
-
-## Allocators
-- [ ] arena allocator
-- [ ] fixed buffer allocator

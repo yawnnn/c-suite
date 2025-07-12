@@ -1,3 +1,6 @@
+/**
+ * @file fixed_buffer.h
+ */
 #ifndef __FIXED_BUFFER_H__
 #define __FIXED_BUFFER_H__
 

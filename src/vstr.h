@@ -7,6 +7,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef _MSC_VER
+   #define INLINE __inline
+#elif defined(__STDC__) && __STDC_VERSION__ >= 199901L
+   #define INLINE inline
+#else
+   #define INLINE
+#endif
+
 /**
  * @brief variable length string
  */
@@ -81,9 +89,10 @@ void vstr_shrink_to_fit(Vstr *vs);
  * @param[in] vs Vstr
  * @return c-style string or NULL
  */
-static inline char *vstr_data(Vstr *vs)
+static INLINE char *vstr_data(Vstr *vs)
 {
-   if (vs->cap)  // len could be 0, but still allocated because of the null-terminating character
+   /* len can be 0, but still allocated because of the null-terminating character */
+   if (vs->cap)
       return vs->ptr;
    return NULL;
 }
@@ -95,10 +104,10 @@ static inline char *vstr_data(Vstr *vs)
  * @param[in] pos start position
  * @return c-style string or NULL
  */
-static inline char *vstr_at(Vstr *vs, size_t pos)
+static INLINE char *vstr_at(Vstr *vs, size_t pos)
 {
-   // string can be only null-terminating char, so i have to check cap
-   if (pos <= vs->len && vs->cap)
+   /* len can be 0, but still allocated because of the null-terminating character */
+   if (vs->cap && pos <= vs->len)
       return vs->ptr + pos;
    return NULL;
 }
@@ -159,7 +168,7 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num);
  * @param[in] vs Vstr
  * @return boolean
  */
-static inline bool vstr_is_empty(Vstr *vs)
+static INLINE bool vstr_is_empty(Vstr *vs)
 {
    return vs->len == 0;
 }

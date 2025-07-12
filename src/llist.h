@@ -7,6 +7,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef _MSC_VER
+   #define INLINE __inline
+#elif defined(__STDC__) && __STDC_VERSION__ >= 199901L
+   #define INLINE inline
+#else
+   #define INLINE
+#endif
+
 /**
  * @brief double linked list node
  */
@@ -135,7 +143,7 @@ LNode *llist_get_at(LList *llist, size_t index);
  * @param[in] llist linked list
  * @return boolean
  */
-static inline bool llist_is_empty(LList *llist)
+static INLINE bool llist_is_empty(LList *llist)
 {
    return !llist->head;
 }

@@ -2,11 +2,11 @@
 
 #include <string.h>
 
-//////////////////////////////////////////////////////////////////////////////////////
-// other functions
-//////////////////////////////////////////////////////////////////////////////////////
+/**
+ * other functions
+ */
 
-// Perl's hash function
+/* Perl's hash function */
 static hash_t hash_func_generic(const void *key, size_t size)
 {
    register const uint8_t *data;
@@ -32,18 +32,18 @@ static hash_t hash_func_generic(const void *key, size_t size)
    return hash;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
-// HashNode
-//////////////////////////////////////////////////////////////////////////////////////
+/**
+ * MARK: HashNode
+ */
 
-inline static void hashnode_get(HashMap *map, HashNode *node, void *value)
+INLINE static void hashnode_get(HashMap *map, HashNode *node, void *value)
 {
    memcpy(value, node->value, map->value_size);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
-// HashBucket
-//////////////////////////////////////////////////////////////////////////////////////
+/**
+ * MARK: HashBucket
+ */
 
 static void hashbucket_free(HashBucket *bucket)
 {
@@ -53,7 +53,7 @@ static void hashbucket_free(HashBucket *bucket)
    bucket->cap = bucket->len = 0;
 }
 
-inline static void hashbucket_grow(HashBucket *bucket)
+INLINE static void hashbucket_grow(HashBucket *bucket)
 {
    if (bucket->len == bucket->cap) {
       if (bucket->cap) {
@@ -127,13 +127,13 @@ static bool hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, voi
    return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
-// HashMap
-//////////////////////////////////////////////////////////////////////////////////////
+/**
+ * MARK: HashMap
+ */
 
 static void hashmap_grow(HashMap *map)
 {
-   // nbucket is always kept at a power of 2
+   /* nbucket is always kept at a power of 2 */
    if (map->nbucket) {
       size_t old_nbucket = map->nbucket;
 
@@ -147,13 +147,13 @@ static void hashmap_grow(HashMap *map)
    }
 }
 
-inline static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash)
+INLINE static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash)
 {
    size_t pos;
 
    if (!map->nbucket)
       return NULL;
-   // since nbucket is always a power of 2, i don't need to use modulo
+   /* since nbucket is always a power of 2, i don't need to use modulo */
    pos = hash & (map->nbucket - 1);
 
    return &map->buckets[pos];

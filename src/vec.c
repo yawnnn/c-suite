@@ -11,7 +11,7 @@
  * 
  * @return the pointer
  */
-static inline char *vec_ptr(Vec *v, size_t pos)
+static INLINE char *vec_ptr(Vec *v, size_t pos)
 {
    return ((char *)v->ptr) + (pos * v->szof);
 }
@@ -22,7 +22,7 @@ static inline char *vec_ptr(Vec *v, size_t pos)
  * @param[in,out] v Vec
  * @param[in] nelem number of elements requested
  */
-static inline void vec_alloc(Vec *v, size_t nelem)
+static INLINE void vec_alloc(Vec *v, size_t nelem)
 {
    v->ptr = malloc(nelem * v->szof);
    v->cap = nelem;
@@ -34,7 +34,7 @@ static inline void vec_alloc(Vec *v, size_t nelem)
  * @param[in,out] v Vec
  * @param[in] nelem number of elements requested
  */
-static inline void vec_realloc(Vec *v, size_t nelem)
+static INLINE void vec_realloc(Vec *v, size_t nelem)
 {
    v->ptr = realloc(v->ptr, nelem * v->szof);
    v->cap = nelem;

@@ -4,12 +4,31 @@
 
 #include "arena.h"
 
-/**
- * @brief generic alignment
- * 
- * note: types like double and uint64_t can have 8byte alignment even on 32bit
- */
-#define DEFAULT_ALIGNMENT sizeof(uint64_t)
+#if defined(_MSC_VER)
+   #define DEFAULT_ALIGNMENT __alignof(max_align_t)
+#elif defined(__STDC__) && __STDC_VERSION__ >= 201112L
+   #include "stdalign.h"
+   #define DEFAULT_ALIGNMENT alignof(max_align_t)
+#else
+   /**
+    * @brief generic alignment
+    * 
+    * note: types like double and uint64_t can have 8byte alignment even on 32bit
+    */
+   #define DEFAULT_ALIGNMENT 8
+#endif
+
+#if defined(_MSC_VER)
+   #define FLEXIBLE_ARRAY 0
+#elif defined(__STDC__) && __STDC_VERSION__ >= 199901L
+   #define FLEXIBLE_ARRAY
+#endif
+
+#ifdef FLEXIBLE_ARRAY
+   #define BLOCK_BEG(blk) ((blk)->beg)
+#else
+   #define BLOCK_BEG(blk) ((char *)(blk) + sizeof(Block))
+#endif
 
 /**
  * @brief tracks block of memory allocated
@@ -19,7 +38,10 @@ typedef struct Block {
 
    uintptr_t end; /**< end of allocation */
    uintptr_t head; /**< beginning of free memory */
-   char     *beg[]; /**< beginning of allocation */
+
+#ifdef FLEXIBLE_ARRAY
+   char *beg[FLEXIBLE_ARRAY]; /**< beginning of allocation */
+#endif
 } Block;
 
 /**
@@ -42,15 +64,15 @@ typedef struct Block {
  * 
  * @return allocated block
  */
-inline static Block *block_new(size_t size)
+INLINE static Block *block_new(size_t size)
 {
    Block *blk = (Block *)malloc(sizeof(Block) + size);
    if (!blk)
       return NULL;
 
    blk->next = NULL;
-   blk->head = (uintptr_t)blk->beg;
-   blk->end = (uintptr_t)blk->beg + size;
+   blk->head = (uintptr_t)BLOCK_BEG(blk);
+   blk->end = (uintptr_t)BLOCK_BEG(blk) + size;
 
    return blk;
 }
@@ -60,7 +82,7 @@ inline static Block *block_new(size_t size)
  * 
  * @param[in,out] blk block to be freed
  */
-inline static void block_free(Block *blk)
+INLINE static void block_free(Block *blk)
 {
    do {
       Block *next = blk->next;
@@ -77,7 +99,7 @@ inline static void block_free(Block *blk)
  * 
  * @return allocated chunk
  */
-inline static void *block_alloc(Block *blk, size_t size)
+INLINE static void *block_alloc(Block *blk, size_t size)
 {
    void *ptr = (void *)blk->head;
    blk->head += ALIGN_UP(size, DEFAULT_ALIGNMENT);
@@ -93,7 +115,7 @@ inline static void *block_alloc(Block *blk, size_t size)
  * 
  * @return boolean
  */
-inline static bool block_has_room(Block *blk, size_t size)
+INLINE static bool block_has_room(Block *blk, size_t size)
 {
    return blk->head + size <= blk->end;
 }
@@ -157,7 +179,7 @@ void *arena_realloc(Arena *arena, size_t new_size, void *old_ptr, size_t old_siz
 void arena_reset(Arena *arena)
 {
    for (Block *blk = arena->free_list; blk; blk = blk->next) {
-      blk->head = (uintptr_t)blk->beg;
+      blk->head = (uintptr_t)BLOCK_BEG(blk);
    }
    arena->curr = arena->free_list;
 }

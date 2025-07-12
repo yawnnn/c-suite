@@ -9,6 +9,14 @@
 #include <stddef.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+   #define INLINE __inline
+#elif defined(__STDC__) && __STDC_VERSION__ >= 199901L
+   #define INLINE inline
+#else
+   #define INLINE
+#endif
+
 /**
  * @brief variable length array
  */
@@ -105,7 +113,7 @@ void vec_shrink_to_fit(Vec *v);
  * 
  * @return pointer to beginning of data
  */
-static inline void *vec_data(Vec *v)
+static INLINE void *vec_data(Vec *v)
 {
    if (v->len)
       return v->ptr;
@@ -122,7 +130,7 @@ static inline void *vec_data(Vec *v)
  * 
  * @return pointer to element
  */
-static inline void *vec_elem_at(Vec *v, size_t pos)
+static INLINE void *vec_elem_at(Vec *v, size_t pos)
 {
    if (pos < v->len)
       return ((char *)v->ptr) + (pos * v->szof);
@@ -168,7 +176,7 @@ void vec_insert_n(Vec *v, size_t pos, void *elems, size_t nelem);
  * @param[in] pos index of the element
  * @param[in] elem element to insert
  */
-static inline void vec_insert(Vec *v, size_t pos, void *elem)
+static INLINE void vec_insert(Vec *v, size_t pos, void *elem)
 {
    vec_insert_n(v, pos, elem, 1);
 }
@@ -181,7 +189,7 @@ static inline void vec_insert(Vec *v, size_t pos, void *elem)
  * @param[in,out] v Vec
  * @param[in] elem element to insert
  */
-static inline void vec_push(Vec *v, void *elem)
+static INLINE void vec_push(Vec *v, void *elem)
 {
    vec_insert_n(v, v->len, elem, 1);
 }
@@ -209,7 +217,7 @@ void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
  * @param[in] pos index of the element
  * @param[out] elem element removed, can be NULL
  */
-static inline void vec_remove(Vec *v, size_t pos, void *elem)
+static INLINE void vec_remove(Vec *v, size_t pos, void *elem)
 {
    vec_remove_n(v, pos, elem, 1);
 }
@@ -223,7 +231,7 @@ static inline void vec_remove(Vec *v, size_t pos, void *elem)
  * @param[in,out] v Vec
  * @param[out] elem element removed, can be NULL
  */
-static inline void vec_pop(Vec *v, void *elem)
+static INLINE void vec_pop(Vec *v, void *elem)
 {
    vec_remove_n(v, v->len - 1, elem, 1);
 }
@@ -235,7 +243,7 @@ static inline void vec_pop(Vec *v, void *elem)
  * 
  * @return boolean
  */
-static inline bool vec_is_empty(Vec *v)
+static INLINE bool vec_is_empty(Vec *v)
 {
    return v->len == 0;
 }
@@ -260,7 +268,7 @@ void vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
  * @param[in] val value to set
  * @param[in] nelem number of @p v 's elements
  */
-static inline void vec_memset(Vec *v, void *dst, int val, size_t nelem)
+static INLINE void vec_memset(Vec *v, void *dst, int val, size_t nelem)
 {
    memset(dst, val, nelem * v->szof);
 }
@@ -273,7 +281,7 @@ static inline void vec_memset(Vec *v, void *dst, int val, size_t nelem)
  * @param[in] src source
  * @param[in] nelem number of @p v 's elements
  */
-static inline void vec_memcpy(Vec *v, void *dst, void *src, size_t nelem)
+static INLINE void vec_memcpy(Vec *v, void *dst, void *src, size_t nelem)
 {
    memcpy(dst, src, nelem * v->szof);
 }
@@ -286,7 +294,7 @@ static inline void vec_memcpy(Vec *v, void *dst, void *src, size_t nelem)
  * @param[in] src source
  * @param[in] nelem number of @p v 's elements
  */
-static inline void vec_memmove(Vec *v, void *dst, void *src, size_t nelem)
+static INLINE void vec_memmove(Vec *v, void *dst, void *src, size_t nelem)
 {
    memmove(dst, src, nelem * v->szof);
 }
@@ -299,7 +307,7 @@ static inline void vec_memmove(Vec *v, void *dst, void *src, size_t nelem)
  * @param[in] ptr2 pointer 2
  * @param[in] nelem number of @p v 's elements
  */
-static inline int vec_memcmp(Vec *v, void *ptr1, void *ptr2, size_t nelem)
+static INLINE int vec_memcmp(Vec *v, void *ptr1, void *ptr2, size_t nelem)
 {
    return memcmp(ptr1, ptr2, nelem * v->szof);
 }

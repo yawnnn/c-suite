@@ -14,7 +14,7 @@
  * @param[in,out] vs Vstr
  * @param[in] nbytes number of bytes required
  */
-inline static void vstr_alloc(Vstr *vs, size_t nbytes)
+INLINE static void vstr_alloc(Vstr *vs, size_t nbytes)
 {
    vs->ptr = malloc(nbytes);
    vs->cap = nbytes;
@@ -26,7 +26,7 @@ inline static void vstr_alloc(Vstr *vs, size_t nbytes)
  * @param[in,out] vs Vstr
  * @param[in] nbytes number of bytes required
  */
-inline static void vstr_realloc(Vstr *vs, size_t nbytes)
+INLINE static void vstr_realloc(Vstr *vs, size_t nbytes)
 {
    vs->ptr = realloc(vs->ptr, nbytes);
    vs->cap = nbytes;

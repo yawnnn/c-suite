@@ -7,6 +7,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef _MSC_VER
+   #define INLINE __inline
+#elif defined(__STDC__) && __STDC_VERSION__ >= 199901L
+   #define INLINE inline
+#else
+   #define INLINE
+#endif
+
 typedef struct Block Block;
 
 /**
@@ -26,7 +34,7 @@ typedef struct Arena {
  *
  * @param[out] arena allocator
  */
-inline static void arena_init(Arena *arena)
+INLINE static void arena_init(Arena *arena)
 {
    arena->free_list = arena->curr = NULL;
 }

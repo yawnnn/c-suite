@@ -4,12 +4,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * @brief generic alignment
- * 
- * note: types like double and uint64_t can have 8byte alignment even on 32bit
- */
-#define DEFAULT_ALIGNMENT        sizeof(uint64_t)
+#if defined(__STDC__) && __STDC_VERSION__ >= 201112L
+   #include "stdalign.h"
+   #define DEFAULT_ALIGNMENT alignof(max_align_t)
+#elif defined(_MSC_VER)
+    #define DEFAULT_ALIGNMENT __alignof(max_align_t)
+#else
+   /**
+    * @brief generic alignment
+    * 
+    * note: types like double and uint64_t can have 8byte alignment even on 32bit
+    */
+   #define DEFAULT_ALIGNMENT 8
+#endif
 
 /**
  * @brief align @p num to multiple of @p alignment

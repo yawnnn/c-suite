@@ -5,7 +5,6 @@
 #include <math.h>
 #include "jansson.h"
 
-// Function to generate a random string
 char *random_string(size_t length)
 {
    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -46,7 +45,7 @@ json_t *random_json_object(int depth, int max_depth)
       exit(EXIT_FAILURE);
    }
 
-   for (int i = 0; i < 5; i++) {  // Create 5 random key-value pairs
+   for (int i = 0; i < 5; i++) { // Create 5 random key-value pairs
       char   *key;
       json_t *value;
 
@@ -142,23 +141,6 @@ void *arena_alloc_(size_t size)
 }
 
 void arena_free_(void *ptr) {}
-
-// #include "arena_2.h"
-// static Arena_2 g_arena_2 = {0};
-
-// void arena_2_init_() {}
-
-// void arena_2_deinit_()
-// {
-//    arena_2_free(&g_arena_2);
-// }
-
-// void *arena_2_alloc_(size_t size)
-// {
-//    return arena_2_alloc(&g_arena_2, size);
-// }
-
-// void arena_2_free_(void *ptr) {}
 
 typedef struct Bench {
    double mean, min, max, stddev;
@@ -256,9 +238,6 @@ int main()
 
    benchmark(&bench, filename, arena_init_, arena_deinit_, arena_alloc_, arena_free_);
    print_bench(&bench, "arena");
-
-   // benchmark(&bench, filename, arena_2_init_, arena_2_deinit_, arena_2_alloc_, arena_2_free_);
-   // print_bench(&bench, "arena_2");
 
    return 0;
 }

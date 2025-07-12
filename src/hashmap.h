@@ -1,13 +1,20 @@
 /**
  * @file hashmap.h
  */
-
 #ifndef __HASHMAP_H__
 #define __HASHMAP_H__
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#ifdef _MSC_VER
+   #define INLINE __inline
+#elif defined(__STDC__) && __STDC_VERSION__ >= 199901L
+   #define INLINE inline
+#else
+   #define INLINE
+#endif
 
 typedef struct HashNode {
    uint64_t hash;
