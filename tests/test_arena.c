@@ -1,7 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #include "arena.h"
 
@@ -12,77 +13,153 @@ void test_arena_init_deinit() {
    printf("%s passed.\n", __func__);
 }
 
-void test_arena_alloc_basic() {
+void test_arena_alloc_basic()
+{
    Arena arena;
    arena_init(&arena);
-   void *p = arena_alloc(&arena, 128);
-   assert(p != NULL);
-   memset(p, 1, 128);
+
+   void *ptr = arena_alloc(&arena, 64);
+   assert(ptr != NULL);
+
+   memset(ptr, 0xAB, 64);
+   for (int i = 0; i < 64; ++i) {
+      assert(((unsigned char *)ptr)[i] == 0xAB);
+   }
+
    arena_deinit(&arena);
-   printf("%s passed.\n", __func__);
+   printf("%s passed\n", __func__);
 }
 
-void test_arena_alloc_multiple_blocks() {
+void test_arena_alloc_zero_size()
+{
    Arena arena;
    arena_init(&arena);
-   void *a = arena_alloc(&arena, 60);
-   void *b = arena_alloc(&arena, 60);
-   assert(a != NULL && b != NULL);
-   assert(a != b);
-   memset(a, 1, 60);
-   memset(b, 1, 60);
+
+   void *ptr1 = arena_alloc(&arena, 0);
+   void *ptr2 = arena_alloc(&arena, 0);
+   assert(ptr1 == ptr2);
+
    arena_deinit(&arena);
-   printf("%s passed.\n", __func__);
+   printf("%s passed\n", __func__);
 }
 
-void test_arena_alloc_zero() {
+void test_arena_free_last_alloc()
+{
    Arena arena;
    arena_init(&arena);
-   arena_alloc(&arena, 0);
+
+   void *ptr = arena_alloc(&arena, 128);
+   assert(ptr != NULL);
+
+   bool success = arena_free(&arena, ptr, 128);
+   assert(success);
+
+   // Allocation should reuse same memory if possible
+   void *ptr2 = arena_alloc(&arena, 128);
+   assert(ptr2 == ptr);
+
    arena_deinit(&arena);
-   printf("%s passed.\n", __func__);
+   printf("%s passed\n", __func__);
 }
 
-void test_arena_realloc_grow() {
+void test_arena_free_non_last_alloc()
+{
    Arena arena;
    arena_init(&arena);
-   void *p1 = arena_alloc(&arena, 100);
-   void *p1_2 = arena_alloc(&arena, 100);
-   assert(p1);
-   memset(p1, 42, 100);
-   memset(p1_2, 42, 100);
-   void *p2 = arena_realloc(&arena, 200, p1, 100);
-   assert(p2 != NULL);
-   assert(memcmp(p2, p1_2, 100) == 0);
+
+   void *ptr1 = arena_alloc(&arena, 64);
+   void *ptr2 = arena_alloc(&arena, 64);
+
+   assert(ptr1 != NULL && ptr2 != NULL);
+
+   bool success = arena_free(&arena, ptr1, 64);
+   assert(!success);
+
    arena_deinit(&arena);
-   printf("%s passed.\n", __func__);
+   printf("%s passed\n", __func__);
 }
 
-void test_arena_realloc_shrink() {
+void test_arena_realloc_grow_last()
+{
    Arena arena;
    arena_init(&arena);
-   void *p1 = arena_alloc(&arena, 200);
-   void *p1_2 = arena_alloc(&arena, 200);
-   assert(p1);
-   memset(p1, 42, 200);
-   memset(p1_2, 42, 200);
-   void *p2 = arena_realloc(&arena, 100, p1, 200);
-   assert(p2 != NULL);
-   assert(memcmp(p2, p1_2, 100) == 0);
+
+   char *ptr = arena_alloc(&arena, 16);
+   assert(ptr != NULL);
+
+   strcpy(ptr, "hello");
+
+   char *new_ptr = arena_realloc(&arena, 32, ptr, 16);
+   assert(new_ptr != NULL);
+   assert(strcmp(new_ptr, "hello") == 0);
+
    arena_deinit(&arena);
-   printf("%s passed.\n", __func__);
+   printf("%s passed\n", __func__);
 }
 
-int main() {
-   printf("Arena:\n");
+void test_arena_realloc_non_last()
+{
+   Arena arena;
+   arena_init(&arena);
 
-   test_arena_init_deinit();
+   char *a = arena_alloc(&arena, 32);
+   arena_alloc(&arena, 32);
+   strcpy(a, "world");
+
+   char *new_ptr = arena_realloc(&arena, 64, a, 32);
+   assert(new_ptr != NULL);
+   assert(strcmp(new_ptr, "world") == 0);
+   assert(new_ptr != a);  // Should not be same pointer since `a` wasn't last
+
+   arena_deinit(&arena);
+   printf("%s passed\n", __func__);
+}
+
+void test_arena_reset_and_reuse()
+{
+   Arena arena;
+   arena_init(&arena);
+
+   void *ptr1 = arena_alloc(&arena, 128);
+   assert(ptr1 != NULL);
+
+   arena_reset(&arena);
+
+   void *ptr2 = arena_alloc(&arena, 128);
+   assert(ptr2 != NULL);
+
+   // Might or might not reuse same block, but must be usable
+   memset(ptr2, 0xCC, 128);
+
+   arena_deinit(&arena);
+   printf("%s passed\n", __func__);
+}
+
+void test_arena_deinit_no_leaks()
+{
+   Arena arena;
+   arena_init(&arena);
+
+   for (int i = 0; i < 100; ++i) {
+      void *p = arena_alloc(&arena, 1024);
+      assert(p != NULL);
+      memset(p, i, 1024);
+   }
+
+   arena_deinit(&arena);
+   printf("%s passed\n", __func__);
+}
+
+int main()
+{
    test_arena_alloc_basic();
-   test_arena_alloc_multiple_blocks();
-   test_arena_alloc_zero();
-   test_arena_realloc_grow();
-   test_arena_realloc_shrink();
-
-   printf("\nAll tests passed.\n");
+   test_arena_alloc_zero_size();
+   test_arena_free_last_alloc();
+   test_arena_free_non_last_alloc();
+   test_arena_realloc_grow_last();
+   test_arena_realloc_non_last();
+   test_arena_reset_and_reuse();
+   test_arena_deinit_no_leaks();
+   printf("All tests passed!\n");
    return 0;
 }

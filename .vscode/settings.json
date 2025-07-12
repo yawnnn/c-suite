@@ -10,6 +10,7 @@
         "xstring": "cpp",
         "stdint.h": "c",
         "stddef.h": "c",
-        "fixed_buffer.h": "c"
+        "fixed_buffer.h": "c",
+        "vstr.h": "c"
     }
 }

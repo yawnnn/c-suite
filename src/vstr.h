@@ -95,7 +95,7 @@ static inline char *vstr_data(Vstr *vs)
  * @param[in] pos start position
  * @return c-style string or NULL
  */
-static inline char *vstr_data_from(Vstr *vs, size_t pos)
+static inline char *vstr_at(Vstr *vs, size_t pos)
 {
    // string can be only null-terminating char, so i have to check cap
    if (pos <= vs->len && vs->cap)

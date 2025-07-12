@@ -11,6 +11,7 @@ static void test_init_free()
    llist_init(&list);
    assert(llist_is_empty(&list));
    llist_free(&list);
+   printf("%s passed\n", __func__);
 }
 
 static void test_push_pop_front_back()
@@ -34,6 +35,7 @@ static void test_push_pop_front_back()
 
    assert(llist_is_empty(&list));
    llist_free(&list);
+   printf("%s passed\n", __func__);
 }
 
 static void test_remove()
@@ -55,6 +57,7 @@ static void test_remove()
    assert(llist_get_at(&list, 1) == n3);
 
    llist_free(&list);
+   printf("%s passed\n", __func__);
 }
 
 static void test_split_join()
@@ -83,6 +86,7 @@ static void test_split_join()
       assert(llist_get_at(&list, i)->data == &data[i]);
 
    llist_free(&list);
+   printf("%s passed\n", __func__);
 }
 
 static void test_swap()
@@ -100,6 +104,7 @@ static void test_swap()
    assert(n2->data == &a);
 
    llist_free(&list);
+   printf("%s passed\n", __func__);
 }
 
 static void test_free_with()
@@ -114,6 +119,7 @@ static void test_free_with()
    llist_push_back(&list, str2);
 
    llist_free_with(&list, free);
+   printf("%s passed\n", __func__);
 }
 
 static void test_get_at()
@@ -131,6 +137,7 @@ static void test_get_at()
    assert(llist_get_at(&list, 4) == NULL);  // out of bounds
 
    llist_free(&list);
+   printf("%s passed\n", __func__);
 }
 
 int main()
@@ -142,7 +149,6 @@ int main()
    test_swap();
    test_free_with();
    test_get_at();
-
-   printf("✅ All tests passed.\n");
+   printf("All tests passed.\n");
    return 0;
 }
