@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,20 +7,19 @@
 /**
  * @brief generic alignment
  * 
- * beware: types like double and uint64_t can have 8byte alignment even on 32bit
+ * note: types like double and uint64_t can have 8byte alignment even on 32bit
  */
-#define ALIGNMENT_T       uint64_t
-#define DEFAULT_ALIGNMENT sizeof(ALIGNMENT_T)
+#define DEFAULT_ALIGNMENT sizeof(uint64_t)
 
 /**
  * @brief tracks block of memory allocated
  */
 typedef struct Block {
-   struct Block *next; /**< used for free/reset */
+   struct Block *next; /**< intrusive free list */
 
-   uintptr_t   head; /**< head of availble memory */
-   uintptr_t   end; /**< end of available memory */
-   ALIGNMENT_T start[]; /**< beginning of usable allocation */
+   uintptr_t end; /**< end of allocation */
+   uintptr_t head; /**< beginning of free memory */
+   char     *beg[]; /**< beginning of allocation */
 } Block;
 
 /**
@@ -51,8 +49,8 @@ inline static Block *block_new(size_t size)
       return NULL;
 
    blk->next = NULL;
-   blk->head = (uintptr_t)blk->start;
-   blk->end = (uintptr_t)blk->start + size;
+   blk->head = (uintptr_t)blk->beg;
+   blk->end = (uintptr_t)blk->beg + size;
 
    return blk;
 }
@@ -87,54 +85,79 @@ inline static void *block_alloc(Block *blk, size_t size)
    return ptr;
 }
 
-void arena_init(Arena *arena)
+/**
+ * @brief check is block has @p size free bytes
+ * 
+ * @param[in] blk block
+ * @param[in] size number of bytes
+ * 
+ * @return boolean
+ */
+inline static bool block_has_room(Block *blk, size_t size)
 {
-   arena->start = arena->head = NULL;
+   return blk->head + size <= blk->end;
 }
 
 void arena_deinit(Arena *arena)
 {
-   block_free(arena->start);
+   if (arena->free_list)
+      block_free(arena->free_list);
 }
 
 void *arena_alloc(Arena *arena, size_t size)
 {
    Block *prev = NULL;
 
-   while (arena->head && arena->head->head + size > arena->head->end) {
-      prev = arena->head;
-      arena->head = arena->head->next;
+   while (arena->curr && !block_has_room(arena->curr, size)) {
+      prev = arena->curr;
+      arena->curr = arena->curr->next;
    }
 
-   if (!arena->head) {
-      arena->head = block_new(size > MIN_BLOCKS_SIZE ? size : MIN_BLOCKS_SIZE);
-      if (!arena->head)
+   if (!arena->curr) {
+      arena->curr = block_new(size > MIN_BLOCKS_SIZE ? size : MIN_BLOCKS_SIZE);
+      if (!arena->curr)
          return NULL;
 
       if (prev)
-         prev->next = arena->head;
+         prev->next = arena->curr;
       else
-         arena->start = arena->head;
+         arena->free_list = arena->curr;
    }
 
-   return block_alloc(arena->head, size);
+   return block_alloc(arena->curr, size);
+}
+
+bool arena_free(Arena *arena, void *ptr, size_t size)
+{
+   if (!arena->curr)
+      return false;
+
+   void *last_ptr = (void *)(arena->curr->head - ALIGN_UP(size, DEFAULT_ALIGNMENT));
+   if (ptr != last_ptr)
+      return false;
+
+   arena->curr->head = (uintptr_t)ptr;
+
+   return true;
 }
 
 void *arena_realloc(Arena *arena, size_t new_size, void *old_ptr, size_t old_size)
 {
-   if (new_size <= old_size)
+   bool is_same_ptr = arena_free(arena, old_ptr, old_size);
+   if (new_size <= old_size && !is_same_ptr)
       return old_ptr;
 
    void *new_ptr = arena_alloc(arena, new_size);
-   memcpy(new_ptr, old_ptr, old_size);
+   if (new_ptr && !is_same_ptr)
+      memcpy(new_ptr, old_ptr, old_size);
 
    return new_ptr;
 }
 
 void arena_reset(Arena *arena)
 {
-   for (Block *blk = arena->start; blk; blk = blk->next) {
-      blk->head = (uintptr_t)blk->start;
+   for (Block *blk = arena->free_list; blk; blk = blk->next) {
+      blk->head = (uintptr_t)blk->beg;
    }
-   arena->head = arena->start;
+   arena->curr = arena->free_list;
 }

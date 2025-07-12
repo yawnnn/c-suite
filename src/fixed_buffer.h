@@ -1,7 +1,8 @@
 #ifndef __FIXED_BUFFER_H__
 #define __FIXED_BUFFER_H__
 
-#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 /**
  * @brief fixed buffer allocator
@@ -11,9 +12,9 @@
  * allows to free (reset) memory all at once without keeping track of it
  */
 typedef struct FixedBuffer {
-   uintptr_t end;
-   uintptr_t head;
-   void     *start;
+   uintptr_t end; /**< end of the buffer */
+   uintptr_t head; /**< beginning of free memory */
+   void     *beg; /**< beginng of buffer */
 } FixedBuffer;
 
 /**
@@ -22,13 +23,13 @@ typedef struct FixedBuffer {
  * @p buffer can be only changed with a new call to init
  * @p buffer can be on the stack and therefore needs to be freed by the user
  * 
- * WARNING: every ptr allocated will be aligned so the effective size will likely be slightly less than @p size
+ * note: because of alignment, the effective size will likely be less than @p size
  * 
  * @param[out] fb allocator
  * @param[in] buffer the buffer that will be used
  * @param[in] size size of the bufffer provided
  */
-void  fixed_buffer_init(FixedBuffer *fb, void *buffer, size_t size);
+void fixed_buffer_init(FixedBuffer *fb, void *buffer, size_t size);
 
 /**
  * @brief allocate chunk of memory from the buffer
@@ -41,9 +42,23 @@ void  fixed_buffer_init(FixedBuffer *fb, void *buffer, size_t size);
 void *fixed_buffer_alloc(FixedBuffer *fb, size_t size);
 
 /**
+ * @brief free memory previously allocated
+ * 
+ * this only does something when @p ptr is the last allocated
+ * 
+ * @param[in,out] fb allocator
+ * @param[in] ptr the previously allocated chunk
+ * @param[in] size size of the chunk
+ * 
+ * @return if the free was successful
+ */
+bool fixed_buffer_free(FixedBuffer *fb, void *ptr, size_t size);
+
+/**
  * @brief resize memory previously allocated
  * 
- * WARNING: this is seldom useful since it doesn't free the memory of @p old_block
+ * this is really only useful when @p old_ptr is the last allocated
+ * otherwise it equals a normal allocation + memcpy
  *
  * @param[in,out] fb allocator
  * @param[in] new_size new size of the chunk
@@ -63,6 +78,6 @@ void *fixed_buffer_realloc(FixedBuffer *fb, size_t new_size, void *old_ptr, size
  *
  * @param[in,out] fb allocator
  */
-void  fixed_buffer_reset(FixedBuffer *fb);
+void fixed_buffer_reset(FixedBuffer *fb);
 
 #endif /* __FIXED_BUFFER_H__ */

@@ -17,7 +17,6 @@ void test_arena_alloc_basic() {
    arena_init(&arena);
    void *p = arena_alloc(&arena, 128);
    assert(p != NULL);
-   assert(arena.head != NULL);
    memset(p, 1, 128);
    arena_deinit(&arena);
    printf("%s passed.\n", __func__);

@@ -4,7 +4,8 @@
 #ifndef __ARENA_H__
 #define __ARENA_H__
 
-#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 typedef struct Block Block;
 
@@ -16,8 +17,8 @@ typedef struct Block Block;
  * or reuse it with arena_reset
  */
 typedef struct Arena {
-   Block *start; /**< first block (used for free/reset) */
-   Block *head; /**< first usable blocks */
+   Block *free_list; /**< beginning of reset/free list */
+   Block *curr; /**< beginning of empty blocks */
 } Arena;
 
 /**
@@ -25,7 +26,10 @@ typedef struct Arena {
  *
  * @param[out] arena allocator
  */
-void arena_init(Arena *arena);
+inline static void arena_init(Arena *arena)
+{
+   arena->free_list = arena->curr = NULL;
+}
 
 /**
  * @brief allocate chunk of memory from the arena
@@ -38,9 +42,23 @@ void arena_init(Arena *arena);
 void *arena_alloc(Arena *arena, size_t size);
 
 /**
- * @brief resize memory previously allocated
+ * @brief free memory previously allocated
  * 
- * WARNING: this is seldom useful since it doesn't free the memory of @p old_block
+ * this only does something when @p ptr is the last allocated
+ * 
+ * @param[in,out] arena allocator
+ * @param[in] ptr the previously allocated chunk
+ * @param[in] size size of the chunk
+ * 
+ * @return if the free was successful
+ */
+bool arena_free(Arena *arena, void *ptr, size_t size);
+
+/**
+ * @brief resize memory previously allocated 
+ * 
+ * this is really only useful when @p old_ptr is the last allocated
+ * otherwise it equals a normal allocation + memcpy
  *
  * @param[in,out] arena allocator
  * @param[in] new_size new size of the chunk
