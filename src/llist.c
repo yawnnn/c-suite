@@ -1,6 +1,6 @@
-#include "llist.h"
-
 #include <stdlib.h>
+
+#include "llist.h"
 
 static LNode *lnode_new(void *data, LNode *prev, LNode *next)
 {

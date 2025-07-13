@@ -26,7 +26,7 @@ typedef struct FixedBuffer {
  * @p buffer can be only changed with a new call to init
  * @p buffer can be on the stack and therefore needs to be freed by the user
  * 
- * note: because of alignment, the effective size will likely be less than @p size
+ * because of alignment, the effective size will likely be less than @p size
  * 
  * @param[out] fb allocator
  * @param[in] buffer the buffer that will be used

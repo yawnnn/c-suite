@@ -1,4 +1,5 @@
 #include <stdlib.h>
+
 #include "vec.h"
 
 #define GROWTH_FACTOR (2UL)

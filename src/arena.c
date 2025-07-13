@@ -13,7 +13,8 @@
    /**
     * @brief generic alignment
     * 
-    * note: types like double and uint64_t can have 8byte alignment even on 32bit
+    * types like double and uint64_t can have 8byte alignment even on 32bit
+    * furthermore, alignof(max_align_t) can even be 16, but if you don't have it i ignore that
     */
    #define DEFAULT_ALIGNMENT 8
 #endif
