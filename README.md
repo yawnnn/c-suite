@@ -11,7 +11,6 @@ Should compile with any C99-compliant compiler or non-ancient MSVC
 - [x] fixed_buffer - fixed buffer allocator
 - [ ] hashmap/hashset
 - [ ] list_head
-- [ ] llist_len doesn't work with loops
 - [ ] llist_next/prev functions to ease looping over the list?
 - [ ] improve VStr
 - [ ] improve Vec
