@@ -10,3 +10,4 @@ Should compile with any C99-compliant compiler or non-ancient MSVC
 - [x] arena - arena allocator
 - [x] fixed_buffer - fixed buffer allocator
 - [ ] hashmap/hashset
+- [ ] nob
