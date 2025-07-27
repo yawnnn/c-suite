@@ -1,8 +1,8 @@
 /**
- * @file ilist.h
+ * @file llist.h
  */
-#ifndef __ILIST_H__
-#define __ILIST_H__
+#ifndef __LLIST_H__
+#define __LLIST_H__
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -15,10 +15,10 @@
    #define INLINE
 #endif
 
-typedef struct INode {
-   struct INode *prev;
-   struct INode *next;
-} INode;
+typedef struct LNode {
+   struct LNode *prev;
+   struct LNode *next;
+} LNode;
 
 /**
  * @brief intrusive circulaar doubly linked list
@@ -26,7 +26,7 @@ typedef struct INode {
  * linked lists are well known and simple but rarely useful. a simple vector or more specialized struct is usually preferable.
  * intrusive lists can make sense, but especially in C are more complex and require some preprocessor stuff
  * 
- * intrusive means that you will have to put a @p INode inside the struct definition of the type you want to use it with
+ * intrusive means that you will have to put a @p LNode inside the struct definition of the type you want to use it with
  * you might want to check out the tests/ folder for some examples, altough they're just meant to be tests, not particularly explainatory
  * 
  * the _front/_next methods are good for stacks and the _back/_prev methods good for queues
@@ -35,7 +35,7 @@ typedef struct INode {
  * 
  * implementation based on list_head from the linux kernel
  */
-typedef INode IList;
+typedef LNode LList;
 
 /**
  * @brief cast a member of a structure out to the containing structure
@@ -58,7 +58,7 @@ typedef INode IList;
  * 
  * @param[out] list linked list
  */
-INLINE static void ilist_init(IList *list)
+INLINE static void llist_init(LList *list)
 {
    list->prev = list->next = list;
 }
@@ -69,7 +69,7 @@ INLINE static void ilist_init(IList *list)
  * @param[in,out] node new node
  * @param[in,out] at position before insertion
  */
-void ilist_insert_front(INode *node, INode *at);
+void llist_insert_front(LNode *node, LNode *at);
 
 /**
  * @brief insert @p node before @p at
@@ -77,7 +77,7 @@ void ilist_insert_front(INode *node, INode *at);
  * @param[in,out] node new node
  * @param[in,out] at position after insertion
  */
-void ilist_insert_back(INode *node, INode *at);
+void llist_insert_back(LNode *node, LNode *at);
 
 /**
  * @brief insert @p node at the beginning of the list
@@ -85,9 +85,9 @@ void ilist_insert_back(INode *node, INode *at);
  * @param[in,out] list linked list
  * @param[in,out] node new node
  */
-INLINE static void ilist_push_front(IList *list, INode *node)
+INLINE static void llist_push_front(LList *list, LNode *node)
 {
-   ilist_insert_front(node, (INode *)list);
+   llist_insert_front(node, (LNode *)list);
 }
 
 /**
@@ -96,9 +96,9 @@ INLINE static void ilist_push_front(IList *list, INode *node)
  * @param[in,out] list linked list
  * @param[in,out] node new node
  */
-INLINE static void ilist_push_back(IList *list, INode *node)
+INLINE static void llist_push_back(LList *list, LNode *node)
 {
-   ilist_insert_back(node, (INode *)list);
+   llist_insert_back(node, (LNode *)list);
 }
 
 /**
@@ -106,21 +106,21 @@ INLINE static void ilist_push_back(IList *list, INode *node)
  * 
  * @param[in,out] node node to be removed from the list it belongs to
  */
-void ilist_remove(INode *node);
+void llist_remove(LNode *node);
 
 /**
  * @brief remove node from the beginning of the list
  *
  * @param[in,out] list linked list
  */
-void ilist_pop_back(IList *list);
+void llist_pop_back(LList *list);
 
 /**
  * @brief remove node from the end of the list
  *
  * @param[in,out] list linked list
  */
-void ilist_pop_back(IList *list);
+void llist_pop_back(LList *list);
 
 /**
  * @brief get node at @p index
@@ -130,7 +130,7 @@ void ilist_pop_back(IList *list);
  * 
  * @return node or NULL
  */
-INode *ilist_get(IList *list, size_t index);
+LNode *llist_get(LList *list, size_t index);
 
 /**
  * @brief swap nodes
@@ -138,7 +138,7 @@ INode *ilist_get(IList *list, size_t index);
  * @param[in,out] node1 first node
  * @param[in,out] node2 second node
  */
-void ilist_swap(INode *node1, INode *node2);
+void llist_swap(LNode *node1, LNode *node2);
 
 /**
  * @brief split @p src into two, starting after @p at until the end
@@ -147,7 +147,7 @@ void ilist_swap(INode *node1, INode *node2);
  * @param[in,out] src source list
  * @param[in,out] at position to start at (exclusive)
  */
-void ilist_split_front(IList *dst, IList *src, INode *at);
+void llist_split_front(LList *dst, LList *src, LNode *at);
 
 /**
  * @brief split @p src into two, starting at the beginning until before @p at
@@ -156,7 +156,7 @@ void ilist_split_front(IList *dst, IList *src, INode *at);
  * @param[in,out] src source list
  * @param[in,out] at position to end at (exclusive)
  */
-void ilist_split_back(IList *dst, IList *src, INode *at);
+void llist_split_back(LList *dst, LList *src, LNode *at);
 
 /**
  * @brief insert @p list after @p at
@@ -164,7 +164,7 @@ void ilist_split_back(IList *dst, IList *src, INode *at);
  * @param[in,out] list list to be inserted
  * @param[in,out] at position in the other list to insert at
  */
-void ilist_join_front(IList *list, INode *at);
+void llist_join_front(LList *list, LNode *at);
 
 /**
  * @brief insert @p list before @p at
@@ -172,7 +172,7 @@ void ilist_join_front(IList *list, INode *at);
  * @param[in,out] list list to be inserted
  * @param[in,out] at position in the other list to insert at
  */
-void ilist_join_back(IList *list, INode *at);
+void llist_join_back(LList *list, LNode *at);
 
 /**
  * @brief if @p node represents is the member after the last/before the first of @p list
@@ -180,7 +180,7 @@ void ilist_join_back(IList *list, INode *at);
  * @param[in] list linked list
  * @param[in] node node
  */
-INLINE static bool ilist_iter_end(const IList *list, const INode *node)
+INLINE static bool llist_iter_end(const LList *list, const LNode *node)
 {
    return node == list;
 }
@@ -192,9 +192,9 @@ INLINE static bool ilist_iter_end(const IList *list, const INode *node)
  * 
  * @return first node or NULL
  */
-INLINE static IList *ilist_first(IList *list)
+INLINE static LList *llist_first(LList *list)
 {
-   if (ilist_iter_end(list, list->next))
+   if (llist_iter_end(list, list->next))
       return NULL;
    return list->next;
 }
@@ -206,9 +206,9 @@ INLINE static IList *ilist_first(IList *list)
  * 
  * @return last node or NULL
  */
-INLINE static IList *ilist_last(IList *list)
+INLINE static LList *llist_last(LList *list)
 {
-   if (ilist_iter_end(list, list->prev))
+   if (llist_iter_end(list, list->prev))
       return NULL;
    return list->prev;
 }
@@ -221,9 +221,9 @@ INLINE static IList *ilist_last(IList *list)
  * 
  * @return node after @p curr or NULL
  */
-INLINE static INode *ilist_next(const IList *list, INode *curr)
+INLINE static LNode *llist_next(const LList *list, LNode *curr)
 {
-   if (ilist_iter_end(list, curr->next))
+   if (llist_iter_end(list, curr->next))
       return NULL;
    return curr->next;
 }
@@ -236,9 +236,9 @@ INLINE static INode *ilist_next(const IList *list, INode *curr)
  * 
  * @return node before @p curr or NULL
  */
-INLINE static INode *ilist_prev(const IList *list, INode *curr)
+INLINE static LNode *llist_prev(const LList *list, LNode *curr)
 {
-   if (ilist_iter_end(list, curr->prev))
+   if (llist_iter_end(list, curr->prev))
       return NULL;
    return curr->prev;
 }
@@ -248,9 +248,9 @@ INLINE static INode *ilist_prev(const IList *list, INode *curr)
  * 
  * @param[in] list
  */
-INLINE static bool ilist_is_empty(const IList *list)
+INLINE static bool llist_is_empty(const LList *list)
 {
-   return ilist_iter_end(list, list->next);
+   return llist_iter_end(list, list->next);
 }
 
 /**
@@ -260,7 +260,7 @@ INLINE static bool ilist_is_empty(const IList *list)
  * 
  * @return number of elements
  */
-size_t ilist_len(const IList *list);
+size_t llist_len(const LList *list);
 
 /**
  * @brief the corresponding data of the current element
@@ -269,7 +269,7 @@ size_t ilist_len(const IList *list);
  * @param etype type name of the entry
  * @param MEMBER name of the node variable inside the @p etype struct
  */
-#define ilist_entry(list, etype, MEMBER) container_of(list, etype, MEMBER)
+#define llist_entry(list, etype, MEMBER) container_of(list, etype, MEMBER)
 
 /**
  * @brief the corresponding node from the entry
@@ -277,42 +277,42 @@ size_t ilist_len(const IList *list);
  * @param entry entry
  * @param MEMBER name of the node variable inside the @p entry struct
  */
-#define ilist_from_entry(entry, MEMBER)  (&entry->MEMBER)
+#define llist_from_entry(entry, MEMBER)  (&entry->MEMBER)
 
 /**
  * @brief first entry of the list
  * 
- * parallel of ilist_fist
- * see @p ilist_entry for params
+ * parallel of llist_fist
+ * see @p llist_entry for params
  */
-#define ilist_first_entry(list, etype, MEMBER) \
-   (ilist_iter_end((list), (list)->next) ? ilist_entry((list)->next, etype, MEMBER) : NULL)
+#define llist_first_entry(list, etype, MEMBER) \
+   (llist_iter_end((list), (list)->next) ? llist_entry((list)->next, etype, MEMBER) : NULL)
 
 /**
  * @brief last entry of the list
  * 
- * parallel of ilist_last
- * see @p ilist_entry for params
+ * parallel of llist_last
+ * see @p llist_entry for params
  */
-#define ilist_last_entry(list, etype, MEMBER) \
-   (ilist_iter_end((list), (list)->prev) ? ilist_entry((list)->prev, etype, MEMBER) : NULL)
+#define llist_last_entry(list, etype, MEMBER) \
+   (llist_iter_end((list), (list)->prev) ? llist_entry((list)->prev, etype, MEMBER) : NULL)
 
 /**
  * @brief next entry of the list
  * 
- * parallel of ilist_next
- * see @p ilist_entry for params
+ * parallel of llist_next
+ * see @p llist_entry for params
  */
-#define ilist_next_entry(list, curr, etype, MEMBER) \
-   (ilist_iter_end((list), (curr)->next) ? ilist_entry((curr)->next, etype, MEMBER) : NULL)
+#define llist_next_entry(list, curr, etype, MEMBER) \
+   (llist_iter_end((list), (curr)->next) ? llist_entry((curr)->next, etype, MEMBER) : NULL)
 
 /**
  * @brief previous entry of the list
  * 
- * parallel of ilist_prev
- * see @p ilist_entry for params
+ * parallel of llist_prev
+ * see @p llist_entry for params
  */
-#define ilist_prev_entry(list, curr, etype, MEMBER) \
-   (ilist_iter_end((list), (curr)->prev) ? ilist_entry((curr)->prev, etype, MEMBER) : NULL)
+#define llist_prev_entry(list, curr, etype, MEMBER) \
+   (llist_iter_end((list), (curr)->prev) ? llist_entry((curr)->prev, etype, MEMBER) : NULL)
 
-#endif /* __ILIST_H__ */
+#endif /* __LLIST_H__ */

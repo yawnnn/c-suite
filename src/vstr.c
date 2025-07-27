@@ -1,7 +1,7 @@
-#include "vstr.h"
-
 #include <stdlib.h>
 #include <string.h>
+
+#include "vstr.h"
 
 /**
  * @brief amount to grow underlying memory to
