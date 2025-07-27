@@ -12,6 +12,9 @@
         "stddef.h": "c",
         "fixed_buffer.h": "c",
         "vstr.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "vec.h": "c",
+        "stdalign.h": "c",
+        "type_traits": "c"
     }
 }

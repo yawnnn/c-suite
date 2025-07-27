@@ -1,19 +1,20 @@
-#include "fixed_buffer.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "fixed_buffer.h"
 
 #if defined(__STDC__) && __STDC_VERSION__ >= 201112L
    #include "stdalign.h"
    #define DEFAULT_ALIGNMENT alignof(max_align_t)
 #elif defined(_MSC_VER)
-    #define DEFAULT_ALIGNMENT __alignof(max_align_t)
+   #define DEFAULT_ALIGNMENT __alignof(max_align_t)
 #else
    /**
     * @brief generic alignment
     * 
-    * note: types like double and uint64_t can have 8byte alignment even on 32bit
+    * types like double and uint64_t can have 8byte alignment even on 32bit
+    * furthermore, alignof(max_align_t) can even be 16, but if you don't have it i ignore that
     */
    #define DEFAULT_ALIGNMENT 8
 #endif
