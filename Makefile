@@ -77,14 +77,25 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+## Auto-generated dependency files
+-include $(ALL_DEPS)
+
 ## Run 
+.PHONY: run_tests
+run_tests: $(TESTS_TARGETS)
+	@total=$$(echo $(TESTS_TARGETS) | wc -w); \
+	count=1; \
+	for t in $(TESTS_TARGETS); do \
+		echo "Running test $$count of $$total: $$t"; \
+		$$t || exit 1; \
+		echo ""; \
+		count=$$((count + 1)); \
+	done
+
 .PHONY: run_%
 run_%: $(BUILD_DIR)/%
 	@echo "Running $<"
 	$<
-
-## Auto-generated dependency files
--include $(ALL_DEPS)
 
 .PHONY: clean
 clean:

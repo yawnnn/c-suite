@@ -179,6 +179,6 @@ int main()
    test_fixed_buffer_reset();
    test_fixed_buffer_exhaustion();
 
-   printf("All FixedBuffer tests passed!\n");
+   printf("%s suite passed!\n", __FILE__);
    return 0;
 }

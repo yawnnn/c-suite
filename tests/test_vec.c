@@ -177,6 +177,6 @@ int main()
    test_vec_truncate_shrink();
    test_vec_swap();
    test_vec_mem_ops();
-   printf("All Vec tests passed!\n");
+   printf("%s suite passed!\n", __FILE__);
    return 0;
 }

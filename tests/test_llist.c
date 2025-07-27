@@ -149,6 +149,6 @@ int main()
    test_swap();
    test_free_with();
    test_get_at();
-   printf("All tests passed.\n");
+   printf("%s suite passed!\n", __FILE__);
    return 0;
 }

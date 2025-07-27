@@ -123,6 +123,6 @@ int main() {
     test_vstr_data_from();
     test_vstr_is_empty();
 
-    printf("All Vstr tests passed!\n");
+    printf("%s suite passed!\n", __FILE__);
     return 0;
 }

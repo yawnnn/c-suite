@@ -160,6 +160,6 @@ int main()
    test_arena_realloc_non_last();
    test_arena_reset_and_reuse();
    test_arena_deinit_no_leaks();
-   printf("All tests passed!\n");
+   printf("%s suite passed!\n", __FILE__);
    return 0;
 }
