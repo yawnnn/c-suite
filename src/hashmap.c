@@ -1,23 +1,26 @@
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+
 #include "hashmap.h"
 
-#include <string.h>
+/**
+ * @brief initial n_buckets
+ */
+#define INITIAL_N_BUCKETS 8
 
 /**
- * other functions
+ * @brief Perl's hash function
  */
-
-/* Perl's hash function */
-static hash_t hash_func_generic(const void *key, size_t size)
+static Hash default_hash_fn(const void *key, size_t size)
 {
    register const uint8_t *data;
    register size_t         i;
-   register hash_t         hash;
-
-   const hash_t seed = 0;
+   register Hash           hash;
 
    data = (const uint8_t *)key;
    i = size;
-   hash = seed;
+   hash = 0;  // or seed
 
    while (i--) {
       hash += *data++;
@@ -32,207 +35,336 @@ static hash_t hash_func_generic(const void *key, size_t size)
    return hash;
 }
 
+INLINE static Hash get_hash(const void *key, size_t key_size, HashFn hash_fn, Hash n_buckets)
+{
+   Hash hash = hash_fn(key, key_size);
+
+   return hash & (n_buckets - 1);
+}
+
+//
+// MARK: HashNode
+//
+INLINE static bool hashnode_eq(HashNode *hnode, const void *key, size_t real_size)
+{
+   if (hnode->key_size != real_size)
+      return false;
+   if (hnode->key == key)
+      return true;
+   return !memcmp(hnode->key, key, hnode->key_size);
+}
+
+INLINE static HashNode *hashnode_new(const void *key, size_t key_size, void *value)
+{
+   HashNode *hnode = (HashNode *)malloc(sizeof(HashNode));
+   hnode->key = key;
+   hnode->key_size = key_size;
+   hnode->value = value;
+   hnode->next = NULL;
+
+   return hnode;
+}
+
+INLINE static void *hashnode_free(HashNode *hnode, FreeFn free_fn)
+{
+   void *pvalue = NULL;
+
+   if (free_fn)
+      free_fn(hnode->value);
+   else
+      pvalue = hnode->value;
+   free(hnode);
+
+   return pvalue;
+}
+
+//
+// MARK: HashMap
+//
+typedef enum OpKind {
+   OPK_REHASH,
+   OPK_INS,
+   OPK_REM,
+} OpKind;
+
 /**
- * MARK: HashNode
+ * @brief round up to nearest power of two
  */
-
-INLINE static void hashnode_get(HashMap *map, HashNode *node, void *value)
+INLINE static Hash roundup_pow2(Hash num)
 {
-   memcpy(value, node->value, map->value_size);
+   if (!num)
+      return 1;
+
+   // my quick test shows that -O2 unrolls the loop (making it much faster) if sizeof(num) == 4, but not 8. -O3 does it in all cases 
+   // to make sure, one could unroll it manually, but this is more readable
+   num--;
+   for (uint8_t i = 0; i < sizeof(num); i++) {
+      num |= num >> (1 << i);
+   }
+   num++;
+   return num;
 }
 
-/**
- * MARK: HashBucket
- */
-
-static void hashbucket_free(HashBucket *bucket)
+INLINE static size_t hashmap_obj_size(const void *obj, size_t size)
 {
-   while (bucket->len--)
-      free(bucket->ptr[bucket->len].value);
-   free(bucket->ptr);
-   bucket->cap = bucket->len = 0;
+   if (size == OBJ_SIZE_STR)
+      return obj ? strlen((char *)obj) : 0;
+   return size;
 }
 
-INLINE static void hashbucket_grow(HashBucket *bucket)
+INLINE static float hashmap_load_factor(HashMap *hmap)
 {
-   if (bucket->len == bucket->cap) {
-      if (bucket->cap) {
-         bucket->cap = bucket->cap * 2;
-         bucket->ptr = realloc(bucket->ptr, bucket->cap * sizeof(HashNode));
-      }
-      else {
-         bucket->cap = 2;
-         bucket->ptr = malloc(bucket->cap * sizeof(HashNode));
-      }
+   return (float)hmap->n_items / (float)hmap->n_buckets;
+}
+
+INLINE static void hashmap_check_rehash(HashMap *hmap, OpKind opkind)
+{
+   switch (opkind) {
+   case OPK_REHASH:
+      float load_factor = hashmap_load_factor(hmap);
+      if (load_factor < hmap->min_load || load_factor > hmap->max_load)
+         hashmap_rehash(hmap, 0);
+      break;
+   case OPK_INS:
+      if ((hmap->flags & FLG_REHASH_ON_INS) && hashmap_load_factor(hmap) > hmap->max_load)
+         hashmap_rehash(hmap, 0);
+      break;
+   case OPK_REM:
+      if ((hmap->flags & FLG_REHASH_ON_REM) && hashmap_load_factor(hmap) < hmap->min_load)
+         hashmap_rehash(hmap, 0);
+      break;
    }
 }
 
-static HashNode *hashbucket_find(HashBucket *bucket, hash_t hash)
+INLINE static HashNode *hashmap_find(HashMap *hmap, const void *key, size_t key_size, Hash hash)
 {
-   HashNode *node;
+   HashNode *hnode;
 
-   for (size_t i = 0; i < bucket->len; i++) {
-      node = &bucket->ptr[i];
-      if (node->hash == hash && node->key != NULL) {
-         return node;
-      }
+   for (hnode = hmap->buckets[hash]; hnode; hnode = hnode->next) {
+      if (hashnode_eq(hnode, key, key_size))
+         break;
    }
 
-   return NULL;
+   return hnode;
 }
 
-static void hashbucket_push(HashMap *map, HashBucket *bucket, hash_t hash, void *key, void *value)
+void hashmap_init_with(
+   HashMap *hmap,
+   size_t   key_size,
+   HashFn   hash_fn,
+   FreeFn   free_fn,
+   Hash     n_buckets
+)
 {
-   HashNode *node;
-
-   hashbucket_grow(bucket);
-   node = &bucket->ptr[bucket->len];
-   bucket->len++;
-
-   node->hash = hash;
-   node->key = key;
-   node->value = malloc(map->value_size);
-   memcpy(node->value, value, map->value_size);
+   hmap->n_buckets = roundup_pow2(n_buckets);
+   hmap->buckets = (HashNode **)calloc((size_t)hmap->n_buckets, sizeof(HashNode *));
+   hmap->n_items = 0;
+   hmap->key_size = key_size;
+   hmap->hash_fn = hash_fn ? hash_fn : default_hash_fn;
+   hmap->free_fn = free_fn;
+   hmap->min_load = 0.25;
+   hmap->max_load = 0.75;
+   hmap->flags = FLG_REHASH_ON_INS;
 }
 
-static bool
-hashbucket_insert(HashMap *map, HashBucket *bucket, hash_t hash, void *key, void *value, void *prev)
+void hashmap_init(HashMap *hmap, size_t key_size, HashFn hash_fn, FreeFn free_fn)
 {
-   HashNode *found;
+   hashmap_init_with(hmap, key_size, hash_fn, free_fn, INITIAL_N_BUCKETS);
+}
 
-   found = hashbucket_find(bucket, hash);
-   if (!found)
-      hashbucket_push(map, bucket, hash, key, value);
-   else {
-      if (prev)
-         memcpy(prev, found->value, map->value_size);
-      memcpy(found->value, value, map->value_size);
+void hashmap_insert(HashMap *hmap, const void *key, void *value)
+{
+   HashEntry hentry;
+
+   hashentry_init(&hentry, hmap, key);
+   hashentry_set(&hentry, value);
+}
+
+bool hashmap_remove(HashMap *hmap, const void *key, void **pvalue)
+{
+   size_t    key_size = hashmap_obj_size(key, hmap->key_size);
+   Hash      hash = get_hash(key, key_size, hmap->hash_fn, hmap->n_buckets);
+   HashNode *hnode, *prev = NULL;
+
+   for (hnode = hmap->buckets[hash]; hnode; hnode = hnode->next) {
+      if (hashnode_eq(hnode, key, key_size))
+         break;
+      prev = hnode;
    }
 
-   return found != NULL;
-}
-
-static bool hashbucket_remove(HashMap *map, HashBucket *bucket, hash_t hash, void *prev)
-{
-   HashNode *node;
-
-   node = hashbucket_find(bucket, hash);
-   if (!node)
+   if (!hnode)
       return false;
 
    if (prev)
-      memcpy(prev, node->value, map->value_size);
-   node->key = NULL;
+      prev->next = hnode->next;
+   else
+      hmap->buckets[hash] = hnode->next;
+   hmap->n_items--;
+
+   void *value = hashnode_free(hnode, hmap->free_fn);
+   if (pvalue)
+      *pvalue = value;
+
+   hashmap_check_rehash(hmap, OPK_REM);
+
+   return true;
+}
+
+bool hashmap_get(HashMap *hmap, const void *key, void **pvalue)
+{
+   HashEntry hentry;
+
+   if (!hashentry_init(&hentry, hmap, key))
+      return false;
+
+   hashentry_value(&hentry, pvalue);
+
+   return true;
+}
+
+bool hashmap_contains(HashMap *hmap, const void *key)
+{
+   void *pvalue;
+   return hashmap_get(hmap, key, &pvalue) != 0;
+}
+
+void hashmap_clear(HashMap *hmap)
+{
+   for (size_t i = 0; i < hmap->n_buckets; i++) {
+      hashnode_free(hmap->buckets[i], hmap->free_fn);
+   }
+   memset(hmap->buckets, 0, (size_t)hmap->n_buckets * sizeof(HashNode *));
+   hmap->n_items = 0;
+
+   hashmap_check_rehash(hmap, OPK_REM);
+}
+
+void hashmap_free(HashMap *hmap)
+{
+   while (hmap->n_buckets--) {
+      hashnode_free(hmap->buckets[hmap->n_buckets], hmap->free_fn);
+   }
+   free(hmap->buckets);
+   memset(hmap, 0, sizeof(*hmap));
+}
+
+void hashmap_rehash(HashMap *hmap, Hash n_buckets)
+{
+   if (!n_buckets)
+      n_buckets = (Hash)((float)(hmap->n_items * 2) / (hmap->min_load + hmap->max_load));
+   n_buckets = roundup_pow2(n_buckets);
+
+   if (n_buckets == hmap->n_buckets)
+      return;
+
+   HashNode **buckets = (HashNode **)calloc((size_t)n_buckets, sizeof(HashNode *));
+
+   while (hmap->n_buckets--) {
+      HashNode *hnode = hmap->buckets[hmap->n_buckets];
+      while (hnode) {
+         HashNode *next = hnode->next;
+         Hash      hash = get_hash(hnode->key, hnode->key_size, hmap->hash_fn, n_buckets);
+         hnode->next = buckets[hash];
+         buckets[hash] = hnode;
+         hnode = next;
+      }
+   }
+
+   free(hmap->buckets);
+   hmap->n_buckets = n_buckets;
+   hmap->buckets = buckets;
+}
+
+void hashmap_merge(HashMap *dst, HashMap *src)
+{
+   HashIter hiter;
+
+   hashiter_init(src, &hiter);
+   while (hashiter_next(&hiter)) {
+      hashmap_insert(dst, hashiter_key(&hiter), hashiter_value(&hiter));
+   }
+   hashmap_free(src);
+}
+
+void hashmap_set_thresholds(HashMap *hmap, float min_load, float max_load, bool rehash)
+{
+   if (min_load > 0 && max_load > 0 && min_load < max_load) {
+      hmap->min_load = min_load;
+      hmap->max_load = max_load;
+   }
+
+   if (rehash)
+      hashmap_check_rehash(hmap, OPK_REHASH);
+}
+
+//
+// MARK: HashEntry
+//
+bool hashentry_init(HashEntry *hentry, HashMap *hmap, const void *key)
+{
+   size_t key_size = hashmap_obj_size(key, hmap->key_size);
+   Hash   hash = get_hash(key, key_size, hmap->hash_fn, hmap->n_buckets);
+
+   hentry->hmap = hmap;
+   hentry->hnode = hashmap_find(hmap, key, key_size, hash);
+   hentry->key = key;
+   hentry->key_size = key_size;
+   hentry->hash = hash;
+
+   return hentry->hnode != NULL;
+}
+
+void hashentry_set(HashEntry *hentry, void *value)
+{
+   HashMap  *hmap = hentry->hmap;
+   HashNode *hnode = hentry->hnode;
+
+   if (!hnode) {
+      hnode = hashnode_new(hentry->key, hentry->key_size, value);
+      hnode->next = hmap->buckets[hentry->hash];
+      hmap->buckets[hentry->hash] = hnode;
+      hmap->n_items++;
+
+      hashmap_check_rehash(hmap, OPK_INS);
+   }
+   else if (hmap->free_fn) {
+      hmap->free_fn(hnode->value);
+   }
+
+   hentry->hnode = hnode;
+}
+
+//
+// MARK: HashIter
+//
+void hashiter_init(HashMap *hmap, HashIter *hiter)
+{
+   hiter->hmap = hmap;
+   hiter->hnode = NULL;
+   hiter->hash = (Hash)-1;
+}
+
+bool hashiter_next(HashIter *hiter)
+{
+   HashMap *hmap = hiter->hmap;
+
+   if (hiter->hnode)
+      hiter->hnode = hiter->hnode->next;
+
+   while (!hiter->hnode) {
+      if (++hiter->hash >= hmap->n_buckets)
+         return false;
+
+      hiter->hnode = hmap->buckets[hiter->hash];
+   }
 
    return true;
 }
 
 /**
- * MARK: HashMap
+ * TODO:
+ * - optimize hashmap_merge
+ * - is free_fn necessary?
+ * - is hashmap_clear necessary?
+ * - better hashiter_init?
  */
-
-static void hashmap_grow(HashMap *map)
-{
-   /* nbucket is always kept at a power of 2 */
-   if (map->nbucket) {
-      size_t old_nbucket = map->nbucket;
-
-      map->nbucket = map->nbucket * 2;
-      map->buckets = realloc(map->buckets, map->nbucket * sizeof(HashBucket));
-      memset(&map->buckets[old_nbucket], 0, old_nbucket * sizeof(HashBucket));
-   }
-   else {
-      map->nbucket = 8;
-      map->buckets = calloc(map->nbucket, sizeof(HashBucket));
-   }
-}
-
-INLINE static HashBucket *hashmap_get_bucket(HashMap *map, hash_t hash)
-{
-   size_t pos;
-
-   if (!map->nbucket)
-      return NULL;
-   /* since nbucket is always a power of 2, i don't need to use modulo */
-   pos = hash & (map->nbucket - 1);
-
-   return &map->buckets[pos];
-}
-
-void hashmap_new(HashMap *map, size_t key_size, size_t value_size)
-{
-   map->buckets = NULL;
-   map->nbucket = map->nitem = 0;
-
-   map->key_size = key_size;
-   map->value_size = value_size;
-
-   map->hash_func = hash_func_generic;
-}
-
-void hashmap_free(HashMap *map)
-{
-   while (map->nbucket--)
-      hashbucket_free(&map->buckets[map->nbucket]);
-   free(map->buckets);
-   memset(map, 0, sizeof(HashMap));
-}
-
-bool hashmap_insert(HashMap *map, void *key, void *value, void *prev)
-{
-   HashBucket *bucket;
-   hash_t      hash;
-
-   hash = map->hash_func(key, map->key_size);
-
-   bucket = hashmap_get_bucket(map, hash);
-   if (!bucket) {
-      hashmap_grow(map);
-      bucket = hashmap_get_bucket(map, hash);
-   }
-
-   bool found = hashbucket_insert(map, bucket, hash, key, value, prev);
-   if (!found)
-      map->nitem++;
-
-   return found;
-}
-
-bool hashmap_remove(HashMap *map, void *key, void *value)
-{
-   HashBucket *bucket;
-   hash_t      hash;
-
-   hash = map->hash_func(key, map->key_size);
-
-   bucket = hashmap_get_bucket(map, hash);
-   if (!bucket)
-      return false;
-
-   bool found = hashbucket_remove(map, bucket, hash, value);
-   if (found)
-      map->nitem--;
-
-   return found;
-}
-
-bool hashmap_get(HashMap *map, void *key, void *value)
-{
-   HashBucket *bucket;
-   HashNode   *node;
-   hash_t      hash;
-
-   hash = map->hash_func(key, map->key_size);
-
-   bucket = hashmap_get_bucket(map, hash);
-   if (!bucket)
-      return false;
-
-   node = hashbucket_find(bucket, hash);
-   if (!node)
-      return false;
-
-   hashnode_get(map, node, value);
-
-   return true;
-}
