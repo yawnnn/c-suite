@@ -16,7 +16,7 @@
 #endif
 
 /**
- * @brief variable length string
+ * @brief dynamic heap-allocated string
  */
 typedef struct Vstr {
    char  *ptr; /**< underlying c-style string (access through vstr_data()) */
@@ -87,9 +87,10 @@ void vstr_shrink_to_fit(Vstr *vs);
  * @brief return the underlying c-style string, or NULL
  *
  * @param[in] vs Vstr
+ * 
  * @return c-style string or NULL
  */
-static INLINE char *vstr_data(Vstr *vs)
+INLINE static char *vstr_data(Vstr *vs)
 {
    /* len can be 0, but still allocated because of the null-terminating character */
    if (vs->cap)
@@ -98,18 +99,35 @@ static INLINE char *vstr_data(Vstr *vs)
 }
 
 /**
- * @brief return the underlying c-style string starting at @p pos, or NULL
+ * @brief const counterpart of @p vstr_data
+ */
+INLINE static const char *vstr_data_const(const Vstr *vs)
+{
+   return vstr_data((Vstr *)vs);
+}
+
+/**
+ * @brief return the underlying c-style string starting at @p pos
  *
  * @param[in] vs Vstr
  * @param[in] pos start position
+ * 
  * @return c-style string or NULL
  */
-static INLINE char *vstr_at(Vstr *vs, size_t pos)
+INLINE static char *vstr_at(Vstr *vs, size_t pos)
 {
-   /* len can be 0, but still allocated because of the null-terminating character */
+   // len can be 0, but still allocated because of the null-terminating character
    if (vs->cap && pos <= vs->len)
       return vs->ptr + pos;
    return NULL;
+}
+
+/**
+ * @brief const counterpart of @p vstr_at
+ */
+INLINE static const char *vstr_at_const(const Vstr *vs, size_t pos)
+{
+   return vstr_at((Vstr *)vs, pos);
 }
 
 /**
@@ -121,14 +139,17 @@ static INLINE char *vstr_at(Vstr *vs, size_t pos)
  * @param[in] pos start position inside @p dest
  * @param[in] source source c-style string
  * @param[in] num max numbers of characters to copy
+ * 
+ * @return false on failure
  */
-void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num);
+bool vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num);
 
 /**
  * @brief strcpy for Vstr
  *
  * @param[in,out] dest Vstr
  * @param[in] source source c-style string
+ * 
  * @return the underlying c-style string of @p dest
  */
 char *vstr_cpy(Vstr *dest, const char *source);
@@ -139,6 +160,7 @@ char *vstr_cpy(Vstr *dest, const char *source);
  * @param[in,out] dest Vstr
  * @param[in] source source c-style string
  * @param[in] num max number of characters to copy
+ * 
  * @return the underlying c-style string of @p dest
  */
 char *vstr_ncpy(Vstr *dest, const char *source, size_t num);
@@ -148,6 +170,7 @@ char *vstr_ncpy(Vstr *dest, const char *source, size_t num);
  *
  * @param[in,out] dest Vstr
  * @param[in] source source c-style string
+ * 
  * @return the underlying c-style string of @p dest
  */
 char *vstr_cat(Vstr *dest, const char *source);
@@ -158,6 +181,7 @@ char *vstr_cat(Vstr *dest, const char *source);
  * @param[in,out] dest Vstr
  * @param[in] source source c-style string
  * @param[in] num max number of characters to concat
+ * 
  * @return the underlying c-style string of @p dest
  */
 char *vstr_ncat(Vstr *dest, const char *source, size_t num);
@@ -166,9 +190,10 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num);
  * @brief if Vstr is empty
  *
  * @param[in] vs Vstr
- * @return boolean
+ * 
+ * @return result
  */
-static INLINE bool vstr_is_empty(Vstr *vs)
+INLINE static bool vstr_is_empty(const Vstr *vs)
 {
    return vs->len == 0;
 }

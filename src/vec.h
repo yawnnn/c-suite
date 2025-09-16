@@ -18,13 +18,13 @@
 #endif
 
 /**
- * @brief variable length array
+ * @brief dynamic heap-allocated array
  */
 typedef struct Vec {
    void  *ptr; /**< underlying data (if needed, access through vec_data()) */
    size_t len; /**< number of usable elements */
-   size_t szof; /**< sizeof() of the data type to be held */
    size_t cap; /**< number of elements for which there is space allocated */
+   size_t sizeof_t; /**< size of the data type to be held */
 } Vec;
 
 /**
@@ -33,9 +33,9 @@ typedef struct Vec {
  * the Vec is not allocated, therefore vec_data() returns NULL
  *
  * @param[out] v Vec
- * @param[in] szof size of the single elements it's going to contain
+ * @param[in] sizeof_t size of the single elements it's going to contain
  */
-void vec_new(Vec *v, size_t szof);
+void vec_new(Vec *v, size_t sizeof_t);
 
 /**
  * @brief new Vec with reserved space
@@ -43,10 +43,10 @@ void vec_new(Vec *v, size_t szof);
  * the Vec has 0 length, therefore vec_data() returns NULL
  *
  * @param[out] v Vec
- * @param[in] szof size of the single elements it's going to contain
+ * @param[in] sizeof_t size of the single elements it's going to contain
  * @param[in] nelem number of elements to reserve memory for
  */
-void vec_new_with(Vec *v, size_t szof, size_t nelem);
+void vec_new_with(Vec *v, size_t sizeof_t, size_t nelem);
 
 /**
  * @brief new Vec with elements initialized to zero
@@ -54,10 +54,10 @@ void vec_new_with(Vec *v, size_t szof, size_t nelem);
  * the Vec has @p nelem length therefore vec_data() is valid
  *
  * @param[out] v Vec
- * @param[in] szof size of the single elements it's going to contain
+ * @param[in] sizeof_t size of the single elements it's going to contain
  * @param[in] nelem number of elements to initialize to zero
  */
-void vec_new_with_zeroed(Vec *v, size_t szof, size_t nelem);
+void vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem);
 
 /**
  * @brief new Vec copied from existing array
@@ -65,16 +65,16 @@ void vec_new_with_zeroed(Vec *v, size_t szof, size_t nelem);
  * @p arr is shallow-copied
  *
  * @param[out] v Vec
- * @param[in] szof size of the single elements it's going to contain
+ * @param[in] sizeof_t size of the single elements it's going to contain
  * @param[in] arr source array
  * @param[in] nelem number of elements of array
  */
-void vec_from(Vec *v, size_t szof, void *arr, size_t nelem);
+void vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem);
 
 /**
  * @brief release memory
  *
- * doesn't reset szof.
+ * doesn't reset sizeof_t.
  * if the single elements own memory, that needs to be release before by the caller
  *
  * @param[in,out] v Vec
@@ -107,17 +107,25 @@ void vec_reserve(Vec *v, size_t nelem);
 void vec_shrink_to_fit(Vec *v);
 
 /**
- * @brief pointer to the underlying data, or NULL
+ * @brief pointer to the underlying data
  *
  * @param[in] v Vec
  * 
- * @return pointer to beginning of data
+ * @return pointer to beginning of data, or NULL
  */
-static INLINE void *vec_data(Vec *v)
+INLINE static void *vec_data(Vec *v)
 {
    if (v->len)
       return v->ptr;
    return NULL;
+}
+
+/**
+ * @brief const counterpart of @p vec_data
+ */
+INLINE static const void *vec_data_const(const Vec *v)
+{
+   return vec_data((Vec *)v);
 }
 
 /**
@@ -128,13 +136,21 @@ static INLINE void *vec_data(Vec *v)
  * @param[in] v Vec
  * @param[in] pos index of the element
  * 
- * @return pointer to element
+ * @return pointer to element, or NULL
  */
-static INLINE void *vec_elem_at(Vec *v, size_t pos)
+INLINE static void *vec_at(Vec *v, size_t pos)
 {
    if (pos < v->len)
-      return ((char *)v->ptr) + (pos * v->szof);
+      return &((char *)v->ptr)[pos * v->sizeof_t];
    return NULL;
+}
+
+/**
+ * @brief const counterpart of @p vec_at
+ */
+INLINE static const void *vec_at_const(const Vec *v, size_t pos)
+{
+   return vec_at((Vec *)v, pos);
 }
 
 /**
@@ -143,8 +159,10 @@ static INLINE void *vec_elem_at(Vec *v, size_t pos)
  * @param[in] v Vec
  * @param[in] pos index of the element
  * @param[out] elem destination of the copy
+ * 
+ * @return false of failure
  */
-void vec_get(Vec *v, size_t pos, void *elem);
+bool vec_get(const Vec *v, size_t pos, void *elem);
 
 /**
  * @brief set element at pos through shallow-copy
@@ -152,8 +170,10 @@ void vec_get(Vec *v, size_t pos, void *elem);
  * @param[in,out] v Vec
  * @param[in] elem source of the copy
  * @param[in] pos index of the element
+ * 
+ * @return false of failure
  */
-void vec_set(Vec *v, void *elem, size_t pos);
+bool vec_set(Vec *v, const void *elem, size_t pos);
 
 /**
  * @brief bulk insert of elements starting at pos through shallow-copy
@@ -164,8 +184,10 @@ void vec_set(Vec *v, void *elem, size_t pos);
  * @param[in] pos starting index of the elements
  * @param[in] elems array of elements
  * @param[in] nelem number of elements of the array
+ * 
+ * @return false of failure
  */
-void vec_insert_n(Vec *v, size_t pos, void *elems, size_t nelem);
+bool vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem);
 
 /**
  * @brief insert element at pos through shallow-copy
@@ -175,10 +197,12 @@ void vec_insert_n(Vec *v, size_t pos, void *elems, size_t nelem);
  * @param[in,out] v Vec
  * @param[in] pos index of the element
  * @param[in] elem element to insert
+ * 
+ * @return false of failure
  */
-static INLINE void vec_insert(Vec *v, size_t pos, void *elem)
+INLINE static bool vec_insert(Vec *v, size_t pos, const void *elem)
 {
-   vec_insert_n(v, pos, elem, 1);
+   return vec_insert_n(v, pos, elem, 1);
 }
 
 /**
@@ -188,10 +212,12 @@ static INLINE void vec_insert(Vec *v, size_t pos, void *elem)
  * 
  * @param[in,out] v Vec
  * @param[in] elem element to insert
+ * 
+ * @return false of failure
  */
-static INLINE void vec_push(Vec *v, void *elem)
+INLINE static bool vec_push(Vec *v, const void *elem)
 {
-   vec_insert_n(v, v->len, elem, 1);
+   return vec_insert_n(v, v->len, elem, 1);
 }
 
 /**
@@ -204,8 +230,10 @@ static INLINE void vec_push(Vec *v, void *elem)
  * @param[in] pos index of the elements
  * @param[out] elems the elements removed, can be NULL
  * @param[in] nelem number of elements to be removed
+ * 
+ * @return false of failure
  */
-void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
+bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
 
 /**
  * @brief remove element from pos, shifting the ones after
@@ -216,10 +244,12 @@ void vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
  * @param[in,out] v Vec
  * @param[in] pos index of the element
  * @param[out] elem element removed, can be NULL
+ * 
+ * @return false of failure
  */
-static INLINE void vec_remove(Vec *v, size_t pos, void *elem)
+INLINE static bool vec_remove(Vec *v, size_t pos, void *elem)
 {
-   vec_remove_n(v, pos, elem, 1);
+   return vec_remove_n(v, pos, elem, 1);
 }
 
 /**
@@ -230,10 +260,12 @@ static INLINE void vec_remove(Vec *v, size_t pos, void *elem)
  * 
  * @param[in,out] v Vec
  * @param[out] elem element removed, can be NULL
+ * 
+ * @return false of failure
  */
-static INLINE void vec_pop(Vec *v, void *elem)
+INLINE static bool vec_pop(Vec *v, void *elem)
 {
-   vec_remove_n(v, v->len - 1, elem, 1);
+   return vec_remove_n(v, v->len - 1, elem, 1);
 }
 
 /**
@@ -241,9 +273,9 @@ static INLINE void vec_pop(Vec *v, void *elem)
  *
  * @param[in] v Vec
  * 
- * @return boolean
+ * @return result
  */
-static INLINE bool vec_is_empty(Vec *v)
+INLINE static bool vec_is_empty(const Vec *v)
 {
    return v->len == 0;
 }
@@ -257,8 +289,10 @@ static INLINE bool vec_is_empty(Vec *v)
  * @param[in] pos1 index of the element
  * @param[in] pos2 index of the element
  * @param[out] tmp memory big enough to contain an element of the vector
+ * 
+ * @return false of failure
  */
-void vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
+bool vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
 
 /**
  * @brief memset for @p v 's elements
@@ -268,9 +302,9 @@ void vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
  * @param[in] val value to set
  * @param[in] nelem number of @p v 's elements
  */
-static INLINE void vec_memset(Vec *v, void *dst, int val, size_t nelem)
+INLINE static void vec_memset(const Vec *v, void *dst, int val, size_t nelem)
 {
-   memset(dst, val, nelem * v->szof);
+   memset(dst, val, nelem * v->sizeof_t);
 }
 
 /**
@@ -281,9 +315,9 @@ static INLINE void vec_memset(Vec *v, void *dst, int val, size_t nelem)
  * @param[in] src source
  * @param[in] nelem number of @p v 's elements
  */
-static INLINE void vec_memcpy(Vec *v, void *dst, void *src, size_t nelem)
+INLINE static void vec_memcpy(const Vec *v, void *dst, const void *src, size_t nelem)
 {
-   memcpy(dst, src, nelem * v->szof);
+   memcpy(dst, src, nelem * v->sizeof_t);
 }
 
 /**
@@ -294,9 +328,9 @@ static INLINE void vec_memcpy(Vec *v, void *dst, void *src, size_t nelem)
  * @param[in] src source
  * @param[in] nelem number of @p v 's elements
  */
-static INLINE void vec_memmove(Vec *v, void *dst, void *src, size_t nelem)
+INLINE static void vec_memmove(const Vec *v, void *dst, const void *src, size_t nelem)
 {
-   memmove(dst, src, nelem * v->szof);
+   memmove(dst, src, nelem * v->sizeof_t);
 }
 
 /**
@@ -307,9 +341,9 @@ static INLINE void vec_memmove(Vec *v, void *dst, void *src, size_t nelem)
  * @param[in] ptr2 pointer 2
  * @param[in] nelem number of @p v 's elements
  */
-static INLINE int vec_memcmp(Vec *v, void *ptr1, void *ptr2, size_t nelem)
+INLINE static int vec_memcmp(const Vec *v, const void *ptr1, const void *ptr2, size_t nelem)
 {
-   return memcmp(ptr1, ptr2, nelem * v->szof);
+   return memcmp(ptr1, ptr2, nelem * v->sizeof_t);
 }
 
 #endif /* __VEC_H__ */

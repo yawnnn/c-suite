@@ -54,7 +54,7 @@ void test_vec_push_and_elem_at()
    int a = 42;
    vec_push(&v, &a);
    assert(v.len == 1);
-   int *elem = (int *)vec_elem_at(&v, 0);
+   int *elem = (int *)vec_at(&v, 0);
    assert(*elem == 42);
    vec_free(&v);
    printf("%s passed\n", __func__);

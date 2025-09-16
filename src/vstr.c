@@ -6,7 +6,7 @@
 /**
  * @brief amount to grow underlying memory to
  */
-#define GROWTH_FACTOR (2UL)
+#define GROWTH_FACTOR 2UL
 
 /**
  * @brief allocate Vstr.
@@ -53,10 +53,27 @@ static void vstr_resize(Vstr *vs, size_t nbytes)
       vstr_alloc(vs, nbytes > GROWTH_FACTOR ? nbytes : GROWTH_FACTOR);
 }
 
+/**
+ * @brief append @p src from @p pos onward without bound-checking
+ * 
+ * @param[in,out] vs Vstr
+ * @param[in] pos start position
+ * @param[in] src source string
+ * @param[in] nbyte number of bytes of @p src
+ */
+INLINE static void vstr_append_unchecked(Vstr *dst, size_t pos, const char *src, size_t nbyte)
+{
+   size_t new_len = pos + nbyte;
+
+   vstr_reserve(dst, new_len);
+   memcpy(&dst->ptr[pos], src, nbyte);
+   dst->ptr[pos + nbyte] = '\0';
+   dst->len = new_len;
+}
+
 void vstr_new(Vstr *vs)
 {
-   vs->cap = 0;
-   vs->len = 0;
+   vs->cap = vs->len = 0;
 }
 
 void vstr_new_with(Vstr *vs, size_t len)
@@ -66,18 +83,17 @@ void vstr_new_with(Vstr *vs, size_t len)
    vstr_cpy(vs, "");
 }
 
-void vstr_from(Vstr *vs, const char *source)
+void vstr_from(Vstr *vs, const char *src)
 {
    vstr_new(vs);
-   vstr_cpy(vs, source);
+   vstr_cpy(vs, src);
 }
 
 void vstr_free(Vstr *vs)
 {
    if (vs->cap)
       free(vs->ptr);
-   vs->cap = 0;
-   vs->len = 0;
+   vs->cap = vs->len = 0;
 }
 
 void vstr_truncate(Vstr *vs, size_t new_len)
@@ -100,55 +116,56 @@ void vstr_shrink_to_fit(Vstr *vs)
       vstr_resize(vs, vs->len + 1);
 }
 
-void vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num)
+bool vstr_insert(Vstr *dst, size_t pos, const char *src, size_t nbyte)
 {
-   if (pos <= dest->len) {
-      size_t new_len = dest->len + num;
+   if (pos > dst->len)
+      return false;
 
-      vstr_reserve(dest, new_len);
-      memmove(&dest->ptr[pos + num], &dest->ptr[pos], dest->len - pos);
-      memcpy(&dest->ptr[pos], source, num);
-      dest->ptr[new_len] = '\0';
-      dest->len = new_len;
-   }
+   size_t new_len = dst->len + nbyte;
+
+   vstr_reserve(dst, new_len);
+   memmove(&dst->ptr[pos + nbyte], &dst->ptr[pos], dst->len - pos);
+   memcpy(&dst->ptr[pos], src, nbyte);
+   dst->ptr[new_len] = '\0';
+   dst->len = new_len;
+
+   return true;
 }
 
-char *vstr_cpy(Vstr *dest, const char *source)
+char *vstr_cpy(Vstr *dst, const char *src)
 {
-   vstr_truncate(dest, 0);
-   vstr_insert(dest, 0, source, strlen(source));
+   vstr_append_unchecked(dst, 0, src, strlen(src));
 
-   return dest->ptr;
+   return dst->ptr;
 }
 
-char *vstr_ncpy(Vstr *dest, const char *source, size_t num)
+char *vstr_ncpy(Vstr *dst, const char *src, size_t nbyte)
 {
    size_t src_len;
 
-   src_len = strlen(source);
-   if (src_len < num)
-      num = src_len;
-   vstr_truncate(dest, 0);
-   vstr_insert(dest, 0, source, num);
+   src_len = strlen(src);
+   if (src_len < nbyte)
+      nbyte = src_len;
+   vstr_append_unchecked(dst, 0, src, nbyte);
 
-   return dest->ptr;
+   return dst->ptr;
 }
 
-char *vstr_cat(Vstr *dest, const char *source)
+char *vstr_cat(Vstr *dst, const char *src)
 {
-   vstr_insert(dest, dest->len, source, strlen(source));
+   vstr_append_unchecked(dst, dst->len, src, strlen(src));
 
-   return dest->ptr;
+   return dst->ptr;
 }
 
-char *vstr_ncat(Vstr *dest, const char *source, size_t num)
+char *vstr_ncat(Vstr *dst, const char *src, size_t nbyte)
 {
    size_t src_len;
 
-   src_len = strlen(source);
-   if (src_len < num)
-      num = src_len;
-   vstr_insert(dest, dest->len, source, num);
+   src_len = strlen(src);
+   if (src_len < nbyte)
+      nbyte = src_len;
+   vstr_append_unchecked(dst, dst->len, src, nbyte);
 
-   return dest->ptr;
+   return dst->ptr;
 }
