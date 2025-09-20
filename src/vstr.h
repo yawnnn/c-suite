@@ -27,6 +27,7 @@ typedef struct Vstr {
 /**
  * @brief new Vstr
  *
+ * simple zero-initialization
  * the Vstr is not allocated, therefore vstr_data() returns NULL
  *
  * @param[out] vs Vstr
@@ -185,6 +186,18 @@ char *vstr_cat(Vstr *dest, const char *source);
  * @return the underlying c-style string of @p dest
  */
 char *vstr_ncat(Vstr *dest, const char *source, size_t num);
+
+/**
+ * @brief sprintf on Vstr
+ * 
+ * @param[in,out] dst Vstr
+ * @param[in] pos start position in @p dst
+ * @param[in] format format string
+ * @param[in] args var arg list
+ * 
+ * @return number or characters written or -2 if @p pos is out-of-bounds or negative value returned by sprintf
+ */
+int vstr_sprintf(Vstr *dst, size_t pos, const char *format, ...);
 
 /**
  * @brief if Vstr is empty

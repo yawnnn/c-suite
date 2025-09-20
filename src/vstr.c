@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 #include "vstr.h"
 
@@ -69,6 +71,28 @@ INLINE static void vstr_append_unchecked(Vstr *dst, size_t pos, const char *src,
    memcpy(&dst->ptr[pos], src, nbyte);
    dst->ptr[pos + nbyte] = '\0';
    dst->len = new_len;
+}
+
+/**
+ * @brief sprintf on Vstr, internal impl that uses va_list
+ */
+INLINE static int vstr_vsprintf(Vstr *dst, size_t pos, const char *format, va_list args)
+{
+   if (pos > dst->len)
+      return -2;
+
+   va_list args_copy;
+   va_copy(args_copy, args);
+   int n = vsnprintf(NULL, 0, format, args_copy);
+   va_end(args_copy);
+
+   if (n > 0) {
+      vstr_reserve(dst, pos + n);
+      vsnprintf(&dst->ptr[pos], n + 1, format, args);
+      dst->len = pos + n;
+   }
+
+   return n;
 }
 
 void vstr_new(Vstr *vs)
@@ -168,4 +192,14 @@ char *vstr_ncat(Vstr *dst, const char *src, size_t nbyte)
    vstr_append_unchecked(dst, dst->len, src, nbyte);
 
    return dst->ptr;
+}
+
+int vstr_sprintf(Vstr *dst, size_t pos, const char *format, ...)
+{
+   va_list args;
+   va_start(args, format);
+   int n = vstr_vsprintf(dst, pos, format, args);
+   va_end(args);
+
+   return n;
 }
