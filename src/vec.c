@@ -73,29 +73,37 @@ static void vec_resize(Vec *v, size_t nelem)
       vec_alloc(v, nelem > GROWTH_FACTOR ? nelem : GROWTH_FACTOR);
 }
 
-void vec_new(Vec *v, size_t sizeof_t)
+void **vec_new(Vec *v, size_t sizeof_t)
 {
    v->len = v->cap = 0;
    v->sizeof_t = sizeof_t;
+
+   return vec_to_pv(v);
 }
 
-void vec_new_with(Vec *v, size_t sizeof_t, size_t nelem)
+void **vec_new_with(Vec *v, size_t sizeof_t, size_t nelem)
 {
-   vec_new(v, sizeof_t);
+   void **pv = vec_new(v, sizeof_t);
    vec_reserve(v, nelem);
+
+   return pv;
 }
 
-void vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem)
+void **vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem)
 {
-   vec_new_with(v, nelem, sizeof_t);
+   void **pv = vec_new_with(v, nelem, sizeof_t);
    vec_memset(v, v->ptr, 0, nelem);
    v->len = nelem;
+
+   return pv;
 }
 
-void vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem)
+void **vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem)
 {
-   vec_new(v, sizeof_t);
+   void **pv = vec_new(v, sizeof_t);
    vec_insert_n(v, 0, arr, nelem);
+
+   return pv;
 }
 
 void vec_free(Vec *v)

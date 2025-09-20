@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "vec.h"
 
@@ -164,6 +165,63 @@ void test_vec_mem_ops()
    printf("%s passed\n", __func__);
 }
 
+static int test_vec_pv_sum_and_truncate(int **pvi)
+{
+   Vec *vi = VEC_FROM_PV(pvi);
+   int  total = 0;
+   for (size_t i = 0; i < vi->len; i++) {
+      total += (*pvi)[i];
+   }
+   vec_truncate(vi, 0);
+   return total;
+}
+
+static void test_vec_pv_join_in_place(char ***pvps, char *join)
+{
+   Vec *vps = VEC_FROM_PV(pvps);
+   Vec  vs;
+   vec_new(&vs, sizeof(char));  // should use Vstr here of course
+   for (size_t i = 0; i < vps->len; i++) {
+      if (i)
+         vec_insert_n(&vs, vs.len, join, strlen(join));
+      vec_insert_n(&vs, vs.len, (*pvps)[i], strlen((*pvps)[i]));
+   }
+   char c0 = '\0';
+   vec_push(&vs, &c0);
+   char *ps;
+   while (vec_pop(vps, &ps)) {
+      free(ps);
+   }
+   char *psjoin = vec_data(&vs);  // dont free vs
+   vec_push(vps, &psjoin);
+}
+
+void test_vec_pv()
+{
+   int   values[] = {1, 2, 3};
+   Vec   vi;
+   int **pvi = (int **)vec_from(&vi, sizeof(int), values, sizeof(values) / sizeof(values[0]));
+   int   n = test_vec_pv_sum_and_truncate(pvi);
+   assert(vi.len == 0);
+   assert(n == 1 + 2 + 3);
+   vec_free(&vi);
+
+   const char *words[] = {strdup("hello"), strdup("world")};
+   Vec         vps;
+   char ***pvps = (char ***)vec_from(&vps, sizeof(char *), words, sizeof(words) / sizeof(words[0]));
+   test_vec_pv_join_in_place(pvps, "-");
+   assert(vps.len == 1);
+   char *ps;
+   vec_get(VEC_FROM_PV(pvps), 0, &ps);
+   assert(!strcmp(ps, "hello-world"));
+   while (vec_pop(&vps, &ps)) {
+      free(ps);
+   }
+   vec_free(&vps);
+
+   printf("%s passed\n", __func__);
+}
+
 int main()
 {
    test_vec_new_and_empty();
@@ -177,6 +235,7 @@ int main()
    test_vec_truncate_shrink();
    test_vec_swap();
    test_vec_mem_ops();
+   test_vec_pv();
    printf("%s suite passed!\n", __FILE__);
    return 0;
 }
