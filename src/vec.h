@@ -21,43 +21,91 @@
  * @brief dynamic heap-allocated array
  */
 typedef struct Vec {
-   void  *ptr; /**< underlying data (if needed, access through vec_data()) */
+   void  *ptr; /**< underlying data */
    size_t len; /**< number of usable elements */
    size_t cap; /**< number of elements for which there is space allocated */
    size_t sizeof_t; /**< size of the data type to be held */
 } Vec;
 
 /**
+ * @brief convert @p v to a `void **`, so that it can be cast to `T **`
+ * 
+ * useful to get *some* type-safety
+ * for exemple function that take the `Vec` as input/output can express the underlying `T` in the signature
+ * see `VEC_FROM_PV`
+ */
+INLINE static void **vec_to_pv(Vec *v)
+{
+   return &v->ptr;
+}
+
+/**
+ * @brief wrapper that casts to `T **`
+ */
+#define VEC_TO_PV(T, v) ((T **)vec_to_pv((v)))
+
+/**
+ * @brief const counterpart of `VEC_TO_PV`
+ */
+#define VEC_TO_PV_CONST(T, v) ((const T **)vec_to_pv((Vec *)(v)))
+
+/**
+ * @brief convert @p pv back to a `Vec *`
+ * 
+ * see `VEC_TO_PV`
+ */
+INLINE static Vec *vec_from_pv(void **pv)
+{
+   return (Vec *)((char *)(pv) - offsetof(Vec, ptr));
+}
+
+/**
+ * @brief wrapper that casts @p pv to `void **`
+ */
+#define VEC_FROM_PV(pv) vec_from_pv((void **)(pv))
+
+/**
+ * @brief const counterpart of `VEC_FROM_PV`
+ */
+#define VEC_FROM_PV_CONST(pv) ((const Vec *)vec_from_pv((void **)(pv)))
+
+/**
  * @brief new Vec
  *
- * the Vec is not allocated, therefore vec_data() returns NULL
+ * the Vec is not allocated
  *
  * @param[out] v Vec
  * @param[in] sizeof_t size of the single elements it's going to contain
+ * 
+ * @return ambivalent pointer that can be used as `Vec *` (see `VEC_FROM_PV) or as `T **` for *some* type-safety (see `VEC_TO_PV`)
  */
-void vec_new(Vec *v, size_t sizeof_t);
+void **vec_new(Vec *v, size_t sizeof_t);
 
 /**
  * @brief new Vec with reserved space
  *
- * the Vec has 0 length, therefore vec_data() returns NULL
+ * the Vec has 0 length
  *
  * @param[out] v Vec
  * @param[in] sizeof_t size of the single elements it's going to contain
  * @param[in] nelem number of elements to reserve memory for
+ * 
+ * @return ambivalent pointer that can be used as `Vec *` (see `VEC_FROM_PV) or as `T **` for *some* type-safety (see `VEC_TO_PV`)
  */
-void vec_new_with(Vec *v, size_t sizeof_t, size_t nelem);
+void **vec_new_with(Vec *v, size_t sizeof_t, size_t nelem);
 
 /**
  * @brief new Vec with elements initialized to zero
  *
- * the Vec has @p nelem length therefore vec_data() is valid
+ * the Vec has @p nelem length
  *
  * @param[out] v Vec
  * @param[in] sizeof_t size of the single elements it's going to contain
  * @param[in] nelem number of elements to initialize to zero
+ * 
+ * @return ambivalent pointer that can be used as `Vec *` (see `VEC_FROM_PV) or as `T **` for *some* type-safety (see `VEC_TO_PV`)
  */
-void vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem);
+void **vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem);
 
 /**
  * @brief new Vec copied from existing array
@@ -68,8 +116,10 @@ void vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem);
  * @param[in] sizeof_t size of the single elements it's going to contain
  * @param[in] arr source array
  * @param[in] nelem number of elements of array
+ * 
+ * @return ambivalent pointer that can be used as `Vec *` (see `VEC_FROM_PV) or as `T **` for *some* type-safety (see `VEC_TO_PV`)
  */
-void vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem);
+void **vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem);
 
 /**
  * @brief release memory
@@ -107,31 +157,37 @@ void vec_reserve(Vec *v, size_t nelem);
 void vec_shrink_to_fit(Vec *v);
 
 /**
- * @brief pointer to the underlying data
+ * @brief return slice to the underlying data
+ * 
+ * WARNING: this can be invalidated by insertions into the Vec
  *
  * @param[in] v Vec
+ * @param[out] len length of the returned array
  * 
  * @return pointer to beginning of data, or NULL
  */
-INLINE static void *vec_data(Vec *v)
+INLINE static void *vec_slice(Vec *v, size_t *len)
 {
+   *len = v->len;
    if (v->len)
       return v->ptr;
    return NULL;
 }
 
 /**
- * @brief const counterpart of @p vec_data
+ * @brief wrapper that casts to `T *`
  */
-INLINE static const void *vec_data_const(const Vec *v)
-{
-   return vec_data((Vec *)v);
-}
+#define VEC_SLICE(T, v, len) ((T *)vec_slice((v), (len)))
+
+/**
+ * @brief const counterpart of `VEC_SLICE`
+ */
+#define VEC_SLICE_CONST(T, v, len) ((const T *)vec_slice((Vec *)(v), (len)))
 
 /**
  * @brief return pointer to element at pos
  *
- * if changes to the Vec are made, this pointer can become invalid
+ * WARNING: this can be invalidated by insertions into the Vec
  *
  * @param[in] v Vec
  * @param[in] pos index of the element
@@ -146,12 +202,14 @@ INLINE static void *vec_at(Vec *v, size_t pos)
 }
 
 /**
- * @brief const counterpart of @p vec_at
+ * @brief wrapper that casts to `T *`
  */
-INLINE static const void *vec_at_const(const Vec *v, size_t pos)
-{
-   return vec_at((Vec *)v, pos);
-}
+#define VEC_AT(T, v, pos)  ((T *)vec_at((v), (pos)))
+
+/**
+ * @brief const counterpart of `VEC_AT`
+ */
+#define VEC_AT_CONST(T, v, pos)  ((const T *)vec_at((Vec *)(v), (pos)))
 
 /**
  * @brief get a shallow-copy of the element at pos
@@ -160,7 +218,7 @@ INLINE static const void *vec_at_const(const Vec *v, size_t pos)
  * @param[in] pos index of the element
  * @param[out] elem destination of the copy
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 bool vec_get(const Vec *v, size_t pos, void *elem);
 
@@ -171,7 +229,7 @@ bool vec_get(const Vec *v, size_t pos, void *elem);
  * @param[in] elem source of the copy
  * @param[in] pos index of the element
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 bool vec_set(Vec *v, const void *elem, size_t pos);
 
@@ -185,7 +243,7 @@ bool vec_set(Vec *v, const void *elem, size_t pos);
  * @param[in] elems array of elements
  * @param[in] nelem number of elements of the array
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 bool vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem);
 
@@ -198,7 +256,7 @@ bool vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem);
  * @param[in] pos index of the element
  * @param[in] elem element to insert
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 INLINE static bool vec_insert(Vec *v, size_t pos, const void *elem)
 {
@@ -213,7 +271,7 @@ INLINE static bool vec_insert(Vec *v, size_t pos, const void *elem)
  * @param[in,out] v Vec
  * @param[in] elem element to insert
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 INLINE static bool vec_push(Vec *v, const void *elem)
 {
@@ -228,10 +286,10 @@ INLINE static bool vec_push(Vec *v, const void *elem)
  * 
  * @param[in,out] v Vec
  * @param[in] pos index of the elements
- * @param[out] elems the elements removed, can be NULL
+ * @param[out] elems if != NULL, on exit it's set with the elements removed
  * @param[in] nelem number of elements to be removed
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
 
@@ -243,9 +301,9 @@ bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem);
  * 
  * @param[in,out] v Vec
  * @param[in] pos index of the element
- * @param[out] elem element removed, can be NULL
+ * @param[out] elem if != NULL, on exit it's set with the element removed
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 INLINE static bool vec_remove(Vec *v, size_t pos, void *elem)
 {
@@ -259,9 +317,9 @@ INLINE static bool vec_remove(Vec *v, size_t pos, void *elem)
  * if the element owns memory, that can be freed through @p elem
  * 
  * @param[in,out] v Vec
- * @param[out] elem element removed, can be NULL
+ * @param[out] elem if != NULL, on exit it's set with the element removed
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 INLINE static bool vec_pop(Vec *v, void *elem)
 {
@@ -283,14 +341,14 @@ INLINE static bool vec_is_empty(const Vec *v)
 /**
  * @brief swap two elements of the Vec
  *
- * @p tmp is required for simplicity of implementation. its value after the call is undefined
+ * @p tmp is required to simplify things
  * 
  * @param[in,out] v Vec
  * @param[in] pos1 index of the element
  * @param[in] pos2 index of the element
  * @param[out] tmp memory big enough to contain an element of the vector
  * 
- * @return false of failure
+ * @return false in case of failure
  */
 bool vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
 

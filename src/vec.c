@@ -5,7 +5,7 @@
 /**
  * @brief amount to grow underlying memory to
  */
-#define GROWTH_FACTOR 2UL
+#define GROWTH_FACTOR 2
 
 /**
  * @brief pointer to the element of @p v at @p pos, without bound-checking
@@ -28,80 +28,46 @@ INLINE static const char *vec_at_unchecked_const(const Vec *v, size_t pos)
    return vec_at_unchecked((Vec *)v, pos);
 }
 
-/**
- * @brief alloc Vec.
- * 
- * @param[in,out] v Vec
- * @param[in] nelem number of elements requested
- */
-INLINE static void vec_alloc(Vec *v, size_t nelem)
+void **vec_new(Vec *v, size_t sizeof_t)
 {
-   v->ptr = malloc(nelem * v->sizeof_t);
-   v->cap = nelem;
-}
-
-/**
- * @brief realloc Vec.
- * 
- * @param[in,out] v Vec
- * @param[in] nelem number of elements requested
- */
-INLINE static void vec_realloc(Vec *v, size_t nelem)
-{
-   v->ptr = realloc(v->ptr, nelem * v->sizeof_t);
-   v->cap = nelem;
-}
-
-/**
- * @brief resize Vec.
- * 
- * if shrink, realloc by exact number
- * if grow  , realloc by GROWTH_FACTOR when possible, otherwise exact number
- * 
- * @param[in,out] v Vec
- * @param[in] nelem number of elements requested
- */
-static void vec_resize(Vec *v, size_t nelem)
-{
-   if (v->cap) {
-      if (nelem < v->cap || nelem > v->cap * GROWTH_FACTOR)
-         vec_realloc(v, nelem);
-      else if (nelem > v->cap)
-         vec_realloc(v, v->cap * GROWTH_FACTOR);
-   }
-   else
-      vec_alloc(v, nelem > GROWTH_FACTOR ? nelem : GROWTH_FACTOR);
-}
-
-void vec_new(Vec *v, size_t sizeof_t)
-{
+   v->ptr = NULL;
    v->len = v->cap = 0;
    v->sizeof_t = sizeof_t;
+
+   return vec_to_pv(v);
 }
 
-void vec_new_with(Vec *v, size_t sizeof_t, size_t nelem)
+void **vec_new_with(Vec *v, size_t sizeof_t, size_t nelem)
 {
-   vec_new(v, sizeof_t);
+   void **pv = vec_new(v, sizeof_t);
    vec_reserve(v, nelem);
+
+   return pv;
 }
 
-void vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem)
+void **vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem)
 {
-   vec_new_with(v, nelem, sizeof_t);
+   void **pv = vec_new_with(v, nelem, sizeof_t);
    vec_memset(v, v->ptr, 0, nelem);
    v->len = nelem;
+
+   return pv;
 }
 
-void vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem)
+void **vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem)
 {
-   vec_new(v, sizeof_t);
+   void **pv = vec_new(v, sizeof_t);
    vec_insert_n(v, 0, arr, nelem);
+
+   return pv;
 }
 
 void vec_free(Vec *v)
 {
-   if (v->cap)
+   if (v->ptr) {
       free(v->ptr);
+      v->ptr = NULL;
+   }
    v->len = v->cap = 0;
 }
 
@@ -113,15 +79,25 @@ void vec_truncate(Vec *v, size_t new_len)
 
 void vec_reserve(Vec *v, size_t nelem)
 {
-   if (nelem > v->cap)
-      vec_resize(v, nelem);
+   if (nelem > v->cap) {
+      v->cap *= GROWTH_FACTOR;
+      if (v->cap < nelem)
+         v->cap = nelem;
+
+      if (v->ptr)
+         v->ptr = realloc(v->ptr, v->cap * v->sizeof_t);
+      else
+         v->ptr = malloc(v->cap * v->sizeof_t);
+   }
 }
 
 void vec_shrink_to_fit(Vec *v)
 {
    if (v->cap > v->len) {
-      if (v->len)
-         vec_resize(v, v->len);
+      if (v->len) {
+         v->cap = v->len;
+         v->ptr = realloc(v->ptr, v->cap * v->sizeof_t);
+      }
       else
          vec_free(v);
    }
