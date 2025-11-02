@@ -27,6 +27,7 @@ void test_arena_alloc_basic()
    }
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -40,6 +41,7 @@ void test_arena_alloc_zero_size()
    assert(ptr1 == ptr2);
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -59,6 +61,7 @@ void test_arena_free_last_alloc()
    assert(ptr2 == ptr);
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -76,6 +79,7 @@ void test_arena_free_non_last_alloc()
    assert(!success);
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -94,6 +98,7 @@ void test_arena_realloc_grow_last()
    assert(strcmp(new_ptr, "hello") == 0);
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -112,6 +117,7 @@ void test_arena_realloc_non_last()
    assert(new_ptr != a);  // Should not be same pointer since `a` wasn't last
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -132,6 +138,7 @@ void test_arena_reset_and_reuse()
    memset(ptr2, 0xCC, 128);
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -147,6 +154,7 @@ void test_arena_deinit_no_leaks()
    }
 
    arena_deinit(&arena);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -160,6 +168,7 @@ int main()
    test_arena_realloc_non_last();
    test_arena_reset_and_reuse();
    test_arena_deinit_no_leaks();
+   
    printf("%s suite passed!\n", __FILE__);
    return 0;
 }

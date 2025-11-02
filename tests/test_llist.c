@@ -29,6 +29,7 @@ static void test_init_empty()
    assert(llist_last(&list) == NULL);
    assert(llist_next(&list, (LNode *)&list) == NULL);
    assert(llist_prev(&list, (LNode *)&list) == NULL);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -203,6 +204,7 @@ static void test_forward_backward_symmetry()
    for (int j = 0; j < NTESTS; j++) {
       assert(fwd[j] == (bwd[NTESTS - 1 - j]));
    }
+
    printf("%s passed\n", __func__);
 }
 
@@ -471,6 +473,7 @@ int main()
    test_split_back();
    test_join_front_and_back();
    test_replace_and_swap();
+   
    printf("%s suite passed!\n", __FILE__);
    return 0;
 }

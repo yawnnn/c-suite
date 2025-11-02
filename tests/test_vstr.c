@@ -13,6 +13,7 @@ void test_vstr_new()
    assert(vstr_data(&vs) == NULL);
    assert(vstr_is_empty(&vs));
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -23,6 +24,7 @@ void test_vstr_new_with()
    assert(vstr_data(&vs) != NULL);
    assert(vstr_is_empty(&vs));
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -33,6 +35,7 @@ void test_vstr_from()
    assert(strcmp(vstr_data(&vs), "hello") == 0);
    assert(!vstr_is_empty(&vs));
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -45,6 +48,7 @@ void test_vstr_truncate()
    vstr_truncate(&vs, 10);  // Should have no effect
    assert(strcmp(vstr_data(&vs), "abc") == 0);
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -58,6 +62,7 @@ void test_vstr_reserve_and_shrink()
    vstr_shrink_to_fit(&vs);
    assert(strcmp(vstr_data(&vs), "short") == 0);
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -70,6 +75,7 @@ void test_vstr_insert()
    vstr_insert(&vs, 100, "!", 1);  // Should be ignored (past end)
    assert(strcmp(vstr_data(&vs), "hello world") == 0);
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -82,6 +88,7 @@ void test_vstr_cpy_ncpy()
    vstr_ncpy(&vs, "abcdefg", 3);
    assert(strncmp(vstr_data(&vs), "abc", 3) == 0);
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -94,6 +101,7 @@ void test_vstr_cat_ncat()
    vstr_ncat(&vs, "bazqux", 3);
    assert(strcmp(vstr_data(&vs), "foobarbaz") == 0);
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -105,6 +113,7 @@ void test_vstr_data_from()
    assert(strcmp(sub, "mple") == 0);
    assert(vstr_at(&vs, 100) == NULL);
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -118,6 +127,7 @@ void test_vstr_is_empty()
    vstr_truncate(&vs, 0);
    assert(vstr_is_empty(&vs));
    vstr_free(&vs);
+   
    printf("%s passed\n", __func__);
 }
 
@@ -133,6 +143,7 @@ void test_vstr_sprintf()
    char *res2 = "This is test n.0002";
    assert(!strcmp(vstr_data(&vs), res2));
    assert(n == strlen(res2) - offset);
+   
    printf("%s passed\n", __func__);
 }
 

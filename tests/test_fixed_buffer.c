@@ -164,6 +164,7 @@ void test_fixed_buffer_exhaustion()
    }
 
    assert(count <= BUFFER_SIZE / alloc_size);
+   
    printf("%s passed\n", __func__);
 }
 
