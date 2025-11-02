@@ -95,13 +95,13 @@ INLINE static Hash roundup_pow2(Hash num)
    if (!num)
       return 1;
 
-   // my quick test shows that -O2 unrolls the loop (making it much faster) if sizeof(num) == 4, but not 8. -O3 does it in all cases 
-   // to make sure, one could unroll it manually, but this is more readable
+   // a quick test shows that -O2 unrolls the loop on sizeof(num) == 4, but not 8. -O3 does it in both cases
    num--;
    for (uint8_t i = 0; i < sizeof(num); i++) {
       num |= num >> (1 << i);
    }
    num++;
+
    return num;
 }
 

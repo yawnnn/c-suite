@@ -5,11 +5,11 @@
 
 typedef struct Queue {
    uint8_t *buf;
+   size_t   size;
+   size_t   mask_modulo;
    size_t   head;
    size_t   tail;
    size_t   nelem;
-   size_t   size;
-   size_t   mask_modulo;
 } Queue;
 
 #ifdef _MSC_VER
@@ -30,25 +30,29 @@ INLINE static size_t roundup_pow2(size_t num)
    if (!num)
       return 1;
 
-   // my quick test shows that -O2 unrolls the loop (making it much faster) if sizeof(num) == 4, but not 8. -O3 does it in all cases 
-   // to make sure, one could unroll it manually, but this is more readable
+   // a quick test shows that -O2 unrolls the loop on 32bit, but not 64bit. -O3 does it in both cases
    num--;
    for (uint8_t i = 0; i < sizeof(num); i++) {
       num |= num >> (1 << i);
    }
    num++;
+
    return num;
 }
 
-void queue_init(Queue *q, size_t size)
+bool queue_init(Queue *q, uint8_t *buf, size_t size)
 {
-   size_t size_pow2 = roundup_pow2(size);
-   q->buf = malloc(size_pow2);
-   q->size = size_pow2;
-   q->mask_modulo = SIZE_MAX & (size_pow2 - 1);  // might be worth recomputing every time tho
+   if (size != roundup_pow2(size))
+      return false;
+
+   q->buf = buf;
+   q->size = size;
+   q->mask_modulo = SIZE_MAX & (q->size - 1);  // can also be cheaply computed every time
    q->head = 0;
    q->tail = 0;
    q->nelem = 0;
+
+   return true;
 }
 
 size_t queue_push(Queue *q, const uint8_t *bytes, size_t count)
