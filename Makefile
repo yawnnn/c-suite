@@ -45,7 +45,7 @@ BENCHES_INCLUDES = \
 BENCHES_LOADLIBES = \
     -L$(BASE_LIBS_DIR)/lib
 
-BENCHES_LDLIBS = -ljansson
+BENCHES_LDLIBS = -lm -ljansson
 
 # All
 ALL_DEPS = $(SRC_DEPS)

@@ -7,7 +7,7 @@
             "name": "Debug active file",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/${fileBasenameNoExtension}.exe",
+            "program": "${workspaceFolder}/build/debug/${fileBasenameNoExtension}",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
