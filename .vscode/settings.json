@@ -15,6 +15,9 @@
         "string.h": "c",
         "vec.h": "c",
         "stdalign.h": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "windows.h": "c",
+        "intrin.h": "c",
+        "stdatomic.h": "c"
     }
 }
