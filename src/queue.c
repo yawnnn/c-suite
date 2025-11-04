@@ -6,8 +6,8 @@
 typedef struct Queue {
    uint8_t *buf;
    size_t   size;
-   size_t   size_mask;  // x % q->size == x & q->size_mask
-   size_t   size_log2;  // x / q->size == x >> q->size_log2
+   size_t   size_mask;  // fast modulo: x % q->size == x & q->size_mask
+   size_t   size_log2;  // fast divison: x / q->size == x >> q->size_log2
    size_t   head;
    size_t   tail;
 } Queue;
@@ -26,29 +26,11 @@ INLINE static min(size_t a, size_t b)
 }
 
 /**
- * @brief round up to nearest power of two
- */
-INLINE static size_t roundup_pow2(size_t num)
-{
-   if (!num)
-      return 1;
-
-   // a quick test shows that -O2 unrolls the loop on 32bit, but not 64bit. -O3 does it in both cases
-   num--;
-   for (uint8_t i = 0; i < sizeof(num); i++) {
-      num |= num >> (1 << i);
-   }
-   num++;
-
-   return num;
-}
-
-/**
  * @brief log2(num) when num is power of 2
  */
 INLINE static size_t ilog2_pow2(size_t num)
 {
-   // nota that alternatively gcc has __builtin_ctz, MSVC has _BitScanForward. they'll be faster
+   // alternatively gcc has __builtin_ctz and MSVC has _BitScanForward
    size_t log = 0;
 
    while (num > 1) {
@@ -61,7 +43,7 @@ INLINE static size_t ilog2_pow2(size_t num)
 
 bool queue_init(Queue *q, uint8_t *buf, size_t size)
 {
-   if (size != roundup_pow2(size))
+   if (size & (size - 1))
       return false;
 
    q->buf = buf;
@@ -89,9 +71,9 @@ size_t queue_push(Queue *q, const uint8_t *bytes, size_t count)
       total += count_r;
    }
 
-   size_t count_l = min(q->head & q->size_mask, count - total);
+   tail_pos = q->tail & q->size_mask;
+   size_t count_l = min((q->head & q->size_mask) - tail_pos, count - total);
    if (count_l > 0) {
-      tail_pos = q->tail & q->size_mask;
       memcpy(&q->buf[tail_pos], &bytes[total], count_l);
       q->tail += count_l;
       total += count_l;
@@ -99,8 +81,6 @@ size_t queue_push(Queue *q, const uint8_t *bytes, size_t count)
 
    return total;
 }
-
-// TODO: check the maths work w/ wraparound
 
 size_t queue_pop(Queue *q, uint8_t *bytes, size_t count)
 {
@@ -117,9 +97,9 @@ size_t queue_pop(Queue *q, uint8_t *bytes, size_t count)
       total += count_l;
    }
 
-   size_t count_r = min(q->tail & q->size_mask, count - total);
+   head_pos = q->head & q->size_mask;
+   size_t count_r = min((q->tail & q->size_mask) - head_pos, count - total);
    if (count_r) {
-      head_pos = q->head & q->size_mask;
       memcpy(&bytes[total], &q->buf[head_pos], count_r);
       q->head += count_r;
       total += count_r;
