@@ -10,4 +10,4 @@ Should compile with any C99-compliant compiler or non-ancient MSVC
 - [x] Arena - arena allocator
 - [x] FixedBuffer - fixed buffer allocator
 - [x] Queue - single producer/single consumer lock-free queue
-- [ ] Hashmap
+- [x] Hashmap - linked list-based hashmap

@@ -361,6 +361,6 @@ int main(void)
    test_manual_wrap_pop();
    test_manual_exact_boundary();
 
-   printf("All tests passed\n");
+   printf("%s suite passed!\n", __FILE__);
    return 0;
 }

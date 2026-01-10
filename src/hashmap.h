@@ -15,24 +15,22 @@
    #define INLINE
 #endif
 
-#define OBJ_SIZE_STR      ((size_t)-1) /**< marker for keys that are variable length c-strings */
-
-#define FLG_REHASH_ON_INS 0x01 /**< check thresholds and rehash if necessary on insertion */
-#define FLG_REHASH_ON_REM 0x02 /**< check thresholds and rehash if necessary on removal */
+#define KEY_SIZE_STR ((size_t)-1) /**< marker for keys that are variable length c-strings */
 
 typedef uint32_t Hash; /**< type of the hash */
 typedef Hash (*HashFn)(const void *key, size_t size); /**< custom hash function pointer */
-typedef void (*FreeFn)(void *ptr); /**< custom free function pointer */
 
 typedef struct HashNode {
    const void      *key;
-   size_t           key_size; /**< needed when the hashmap's key_size is OBJ_SIZE_STR */
+   size_t           key_size; /**< needed when the hashmap's key_size is KEY_SIZE_STR */
    void            *value;
    struct HashNode *next;
 } HashNode;
 
 /**
- * @brief HashMap implementation
+ * @brief linked list-based hashmap
+ * 
+ * besides the nice HashEntry thing, this is kept pretty simple, with almost no "configurations".
  */
 typedef struct HashMap {
    HashNode **buckets;
@@ -40,18 +38,16 @@ typedef struct HashMap {
    size_t     n_items;
    size_t     key_size;
    HashFn     hash_fn;
-   FreeFn     free_fn;
    float      min_load;
    float      max_load;
-   uint8_t    flags;
 } HashMap;
 
 /**
  * @brief cache of a lookup inside the hashmap
  * 
- * allows to do a handful of logic on one key without calculating the hash and finding the right node every time
+ * allows to do multiple operations on the same key without having to look it up multiple times
  * 
- * WARNING: any modification done to the hashmap, besides the ones done through this, invalidate this struct
+ * @note any modification done to the hashmap, besides the ones done through this, invalidate this struct
  */
 typedef struct HashEntry {
    HashMap    *hmap;
@@ -64,37 +60,32 @@ typedef struct HashEntry {
 /**
  * @brief state of a sequential iteration in the hashmap
  * 
- * WARNING: any modification done to the hashmap, besides the ones done through this, invalidate this struct
+ * iterations doesn't align with insertion order
+ * 
+ * @note any modification done to the hashmap, besides the ones done through this, invalidate this struct
  */
 typedef struct HashIter {
-   HashMap  *hmap;
-   HashNode *hnode;
-   Hash      hash;
+   const HashMap  *hmap;
+   const HashNode *hnode;
+   Hash            hash;
 } HashIter;
 
 /**
- * @brief initialize hashmap specifiying also the initial number of buckets
+ * @brief initialize hashmap specifiying the initial number of buckets
  * 
  * @param[out] hmap hashmap
- * @param[in] key_size size of the keys. if they are variable c-strings, pass OBJ_SIZE_STR
+ * @param[in] key_size size of the keys. if they are variable c-strings, pass KEY_SIZE_STR
  * @param[in] hash_fn if != NULL, custom hash function
- * @param[in] free_fn if == NULL, values are never freed by the hashmap. if != NULL, values are always freed through this function
  * @param[in] n_buckets minimum number of initial buckets
  */
-void hashmap_init_with(
-   HashMap *hmap,
-   size_t   key_size,
-   HashFn   hash_fn,
-   FreeFn   free_fn,
-   Hash     n_buckets
-);
+void hashmap_init_with(HashMap *hmap, size_t key_size, HashFn hash_fn, Hash n_buckets);
 
 /**
  * @brief initialize hashmap
  * 
  * see @p hashmap_init_with for params
  */
-void hashmap_init(HashMap *hmap, size_t key_size, HashFn hash_fn, FreeFn free_fn);
+void hashmap_init(HashMap *hmap, size_t key_size, HashFn hash_fn);
 
 /**
  * @brief insert key+value pair in the hashmap
@@ -110,7 +101,7 @@ void hashmap_insert(HashMap *hmap, const void *key, void *value);
  * 
  * @param[in,out] hmap hashmap
  * @param[in] key key to remove
- * @param[out] pvalue on success, if != NULL and free_fn is not specified, contains the pointer to the value
+ * @param[out] pvalue if != NULL, on success it points to the removed value
  * 
  * @return if @p key was found
  */
@@ -137,7 +128,7 @@ bool hashmap_get(HashMap *hmap, const void *key, void **pvalue);
  * 
  * @return if @p key was found
  */
-bool hashmap_contains(HashMap *hmap, const void *key);
+bool hashmap_contains(const HashMap *hmap, const void *key);
 
 /**
  * @brief remove all elements from the hashmap, but don't free underlying buckets
@@ -156,55 +147,39 @@ void hashmap_free(HashMap *hmap);
 /**
  * @brief manually ask for a rehash
  * 
+ * this still checks the thresholds. useful to implement rehashing after removal
+ * 
  * @param[in,out] hmap hashmap
- * @param[in] n_buckets if != 0, the number of buckets to rehash with
  */
-void hashmap_rehash(HashMap *hmap, Hash n_buckets);
+void hashmap_rehash(HashMap *hmap);
 
 /**
  * @brief merge one hashmap into the other
  * 
  * @param[in,out] dst destination hashmap
  * @param[in,out] src source hashmap. it will be consumed on exit
+ * 
+ * @return if key sizes are the same, otherwise maps aren't compatible and no work was done
  */
-void hashmap_merge(HashMap *dst, HashMap *src);
+bool hashmap_merge(HashMap *dst, HashMap *src);
 
 /**
- * @brief set thresholds for automatic rehashing
+ * @brief set thresholds for rehashing
  * 
  * @param[in,out] hmap hashmap
- * @param[in] min_load if FLG_REHASH_ON_REM is set. minimum load below which a rehashing is triggered
- * @param[in] max_load if FLG_REHASH_ON_INS is set. maximum load below which a rehashing is triggered
+ * @param[in] min_load minimum load. affects only manual rehashing
+ * @param[in] max_load maximum load
  * 
  * default is @p min_load = 0.25 and @p max_load = 0.75
- */
-void hashmap_set_thresholds(HashMap *hmap, float min_load, float max_load, bool rehash);
-
-/**
- * @brief set flags
  * 
- * eg. hashmap_set_flags(hmap, FLG_REHASH_ON_INS | FLG_REHASH_ON_REM);
- * 
- * @param[out] hmap hashmap
- * @param[in] flags bitwise or (|) of the FLG_? desired
+ * @return if the values are valid
  */
-INLINE static void hashmap_set_flags(HashMap *hmap, uint8_t flags)
-{
-   hmap->flags = flags;
-}
-
-/**
- * @brief if hashmap is empty
- */
-INLINE static bool hashmap_is_empty(HashMap *hmap)
-{
-   return hmap->n_items == 0;
-}
+bool hashmap_set_thresholds(HashMap *hmap, float min_load, float max_load);
 
 /**
  * @brief number of elements in the hashmap
  */
-INLINE static size_t hashmap_len(HashMap *hmap)
+INLINE static size_t hashmap_len(const HashMap *hmap)
 {
    return hmap->n_items;
 }
@@ -227,18 +202,21 @@ bool hashentry_init(HashEntry *hentry, HashMap *hmap, const void *key);
  * 
  * @param[in,out] hentry
  * @param[in] value new value
+ * @param[out] pvalue if != NULL, on success it points to the previous value
+ * 
+ * @return if the entry was occupied
  */
-void hashentry_set(HashEntry *hentry, void *value);
+bool hashentry_set(HashEntry *hentry, void *value, void **pvalue);
 
 /**
  * @brief key corresponding to the entry
  * 
  * @param[in] hentry entry
- * @param[out] pkey on success, points to the key
+ * @param[out] pkey on success, it points to the key
  * 
- * @return if the key was found on init
+ * @return if the entry is occupied
  */
-INLINE static bool hashentry_key(HashEntry *hentry, const void **pkey)
+INLINE static bool hashentry_key(const HashEntry *hentry, const void **pkey)
 {
    if (!hentry->hnode)
       return false;
@@ -252,11 +230,11 @@ INLINE static bool hashentry_key(HashEntry *hentry, const void **pkey)
  * @brief value corresponding to the entry
  * 
  * @param[in] hentry entry
- * @param[out] pkey on success, points to the value
+ * @param[out] pvalue on success, it points to the value
  * 
- * @return if the key was found on init
+ * @return if the entry is occupied
  */
-INLINE static bool hashentry_value(HashEntry *hentry, void **pvalue)
+INLINE static bool hashentry_value(const HashEntry *hentry, void **pvalue)
 {
    if (!hentry->hnode)
       return false;
@@ -269,7 +247,7 @@ INLINE static bool hashentry_value(HashEntry *hentry, void **pvalue)
 /**
  * @brief if the key was found on init
  */
-INLINE static bool hashentry_is_occupied(HashEntry *hentry)
+INLINE static bool hashentry_is_occupied(const HashEntry *hentry)
 {
    return hentry->hnode != NULL;
 }
@@ -277,7 +255,7 @@ INLINE static bool hashentry_is_occupied(HashEntry *hentry)
 /**
  * @brief if the key was not found on init
  */
-INLINE static bool hashentry_is_vacant(HashEntry *hentry)
+INLINE static bool hashentry_is_vacant(const HashEntry *hentry)
 {
    return hentry->hnode == NULL;
 }
@@ -288,7 +266,7 @@ INLINE static bool hashentry_is_vacant(HashEntry *hentry)
  * @param[in] hmap
  * @param[out] hiter
  */
-void hashiter_init(HashMap *hmap, HashIter *hiter);
+void hashiter_init(const HashMap *hmap, HashIter *hiter);
 
 /**
  * @brief get next element of the hashmap
@@ -302,9 +280,9 @@ bool hashiter_next(HashIter *hiter);
 /**
  * @brief return pointer to the corresponding key
  * 
- * WARNING: valid only after a successful hashiter_next
+ * @note valid only after a successful hashiter_next
  */
-INLINE static const void *hashiter_key(HashIter *hiter)
+INLINE static const void *hashiter_key(const HashIter *hiter)
 {
    return hiter->hnode->key;
 }
@@ -312,11 +290,11 @@ INLINE static const void *hashiter_key(HashIter *hiter)
 /**
  * @brief return pointer to the corresponding value
  * 
- * WARNING: valid only after a successful hashiter_next
+ * @note valid only after a successful hashiter_next
  */
-INLINE static void *hashiter_value(HashIter *hiter)
+INLINE static void *hashiter_value(const HashIter *hiter)
 {
-   return hiter->hnode->value;
+   return (void *)hiter->hnode->value;
 }
 
 #endif /* __HASHMAP_H__ */
