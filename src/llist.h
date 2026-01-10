@@ -21,7 +21,7 @@ typedef struct LNode {
 } LNode;
 
 /**
- * @brief intrusive circulaar doubly linked list
+ * @brief intrusive circular doubly linked list
  * 
  * linked lists are well known and simple but rarely useful. a simple vector or more specialized struct is usually preferable.
  * intrusive lists can make sense, but especially in C are more complex and require some preprocessor stuff
@@ -143,7 +143,7 @@ void llist_swap(LNode *node1, LNode *node2);
 /**
  * @brief split @p src into two, starting after @p at until the end
  * 
- * @param[out] dst destination list
+ * @param[out] dst destination list (second part of @p src )
  * @param[in,out] src source list
  * @param[in,out] at position to start at (exclusive)
  */
@@ -175,7 +175,7 @@ void llist_join_front(LList *list, LNode *at);
 void llist_join_back(LList *list, LNode *at);
 
 /**
- * @brief if @p node represents is the member after the last/before the first of @p list
+ * @brief if @p node is the end of the iteration, a.k.a. the list itself
  * 
  * @param[in] list linked list
  * @param[in] node node
@@ -269,7 +269,7 @@ size_t llist_len(const LList *list);
  * @param etype type name of the entry
  * @param MEMBER name of the node variable inside the @p etype struct
  */
-#define llist_entry(list, etype, MEMBER) container_of(list, etype, MEMBER)
+#define llist_entry(node, etype, MEMBER) container_of(node, etype, MEMBER)
 
 /**
  * @brief the corresponding node from the entry
@@ -282,11 +282,11 @@ size_t llist_len(const LList *list);
 /**
  * @brief first entry of the list
  * 
- * parallel of llist_fist
+ * parallel of llist_first
  * see @p llist_entry for params
  */
 #define llist_first_entry(list, etype, MEMBER) \
-   (llist_iter_end((list), (list)->next) ? llist_entry((list)->next, etype, MEMBER) : NULL)
+   (llist_iter_end((list), (list)->next) ? NULL : llist_entry((list)->next, etype, MEMBER))
 
 /**
  * @brief last entry of the list
@@ -295,7 +295,7 @@ size_t llist_len(const LList *list);
  * see @p llist_entry for params
  */
 #define llist_last_entry(list, etype, MEMBER) \
-   (llist_iter_end((list), (list)->prev) ? llist_entry((list)->prev, etype, MEMBER) : NULL)
+   (llist_iter_end((list), (list)->prev) ? NULL : llist_entry((list)->prev, etype, MEMBER))
 
 /**
  * @brief next entry of the list
@@ -304,7 +304,7 @@ size_t llist_len(const LList *list);
  * see @p llist_entry for params
  */
 #define llist_next_entry(list, curr, etype, MEMBER) \
-   (llist_iter_end((list), (curr)->next) ? llist_entry((curr)->next, etype, MEMBER) : NULL)
+   (llist_iter_end((list), (curr)->next) ? NULL : llist_entry((curr)->next, etype, MEMBER))
 
 /**
  * @brief previous entry of the list
@@ -313,6 +313,62 @@ size_t llist_len(const LList *list);
  * see @p llist_entry for params
  */
 #define llist_prev_entry(list, curr, etype, MEMBER) \
-   (llist_iter_end((list), (curr)->prev) ? llist_entry((curr)->prev, etype, MEMBER) : NULL)
+   (llist_iter_end((list), (curr)->prev) ? NULL : llist_entry((curr)->prev, etype, MEMBER))
+
+/** 
+ * @brief iterate over each element of the list
+ * 
+ * @param list the list
+ * @param curr variable to hold the current element
+ * @param next variable to hold the next element
+ * 
+ * @note its necessary to pre-read the @p next if you're deleting the entries in the loop
+ */
+#define llist_foreach(list, curr, next) \
+   for (curr = llist_first(list); curr && (next = llist_next(list, curr), true); curr = next)
+
+/** 
+ * @brief iterate over each element of the list in reverse
+ * 
+ * @param list the list
+ * @param curr variable to hold the current element
+ * @param prev variable to hold the previous element
+ * 
+ * @note its necessary to pre-read the @p prev if you're deleting the entries in the loop
+ */
+#define llist_foreach_rev(list, curr, prev) \
+   for (curr = llist_last(list); curr && (prev = llist_prev(list, curr), true); curr = prev)
+
+/** 
+ * @brief iterate over each entry of the list
+ * 
+ * @param list the list
+ * @param curr variable to hold the current entry
+ * @param next variable to hold the next entry
+ * @param etype type name of the entry
+ * @param MEMBER name of the node variable inside the @p etype struct
+ * 
+ * @note its necessary to pre-read the @p next if you're deleting the entries in the loop
+ */
+#define llist_foreach_entry(list, curr, next, etype, MEMBER) \
+   for (curr = llist_first_entry(list, etype, MEMBER); curr \
+        && (next = llist_next_entry(list, llist_from_entry(curr, MEMBER), etype, MEMBER), true); \
+        curr = next)
+
+/** 
+ * @brief iterate over each entry of the list in reverse
+ * 
+ * @param list the list
+ * @param curr variable to hold the current entry
+ * @param prev variable to hold the previous entry
+ * @param etype type name of the entry
+ * @param MEMBER name of the node variable inside the @p etype struct
+ * 
+ * @note its necessary to pre-read the @p prev if you're deleting the entries in the loop
+ */
+#define llist_foreach_entry_rev(list, curr, prev, etype, MEMBER) \
+   for (curr = llist_last_entry(list, etype, MEMBER); curr \
+        && (prev = llist_prev_entry(list, llist_from_entry(curr, MEMBER), etype, MEMBER), true); \
+        curr = prev)
 
 #endif /* __LLIST_H__ */

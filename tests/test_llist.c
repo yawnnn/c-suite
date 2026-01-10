@@ -29,7 +29,7 @@ static void test_init_empty()
    assert(llist_last(&list) == NULL);
    assert(llist_next(&list, (LNode *)&list) == NULL);
    assert(llist_prev(&list, (LNode *)&list) == NULL);
-   
+
    printf("%s passed\n", __func__);
 }
 
@@ -184,25 +184,33 @@ static void test_forward_backward_symmetry()
    }
 
    // Collect forward
-   int fwd[NTESTS], bwd[NTESTS], i = 0;
-   // this for pattern is also valid
-   for (LNode *curr = (LNode *)&list; (curr = llist_next(&list, curr)) != NULL;) {
-      fwd[i++] = llist_entry(curr, TestNode, node)->value;
+   int    fwd[NTESTS], bwd[NTESTS], i = 0;
+   LNode *curr, *tmp;
+   llist_foreach(&list, curr, tmp)
+   {
+      TestNode *tn = llist_entry(curr, TestNode, node);
+      fwd[i++] = tn->value;
    }
    assert(i == NTESTS);
 
    // Collect backward
    i = 0;
-   for (LNode *curr = llist_last(&list); curr != NULL; curr = llist_prev(&list, curr)) {
+   llist_foreach_rev(&list, curr, tmp)
+   {
       TestNode *entry = llist_entry(curr, TestNode, node);
       bwd[i++] = entry->value;
-      free(entry);
    }
    assert(i == NTESTS);
 
    // Check symmetry
    for (int j = 0; j < NTESTS; j++) {
       assert(fwd[j] == (bwd[NTESTS - 1 - j]));
+   }
+
+   llist_foreach(&list, curr, tmp)
+   {
+      TestNode *tn = llist_entry(curr, TestNode, node);
+      free(tn);
    }
 
    printf("%s passed\n", __func__);
@@ -236,34 +244,37 @@ static void test_forward_backward_iteration()
    LList list;
    llist_init(&list);
 
-   TestNode *nodes[NTESTS];
    for (int i = 0; i < NTESTS; i++) {
-      nodes[i] = make_node(i + 1);
-      llist_push_back(&list, &nodes[i]->node);
+      llist_push_back(&list, &make_node(i + 1)->node);
    }
 
    // Forward iteration
-   LNode *curr = llist_first(&list);
+   LNode *curr, *tmp;
    int    expected = 0;
-   while (curr) {
+   llist_foreach(&list, curr, tmp)
+   {
       TestNode *tn = llist_entry(curr, TestNode, node);
       assert(tn->value == ++expected);
-      curr = llist_next(&list, curr);
+      llist_remove(curr);
+      free(tn);
    }
    assert(expected == NTESTS);
+   assert(llist_len(&list) == 0);
+
+   for (int i = 0; i < NTESTS; i++) {
+      llist_push_back(&list, &make_node(i + 1)->node);
+   }
 
    // Backward iteration
-   curr = llist_last(&list);
    expected = NTESTS;
-   while (curr) {
+   llist_foreach_rev(&list, curr, tmp)
+   {
       TestNode *tn = llist_entry(curr, TestNode, node);
       assert(tn->value == expected--);
-      curr = llist_prev(&list, curr);
+      llist_remove(curr);
+      free(tn);
    }
    assert(expected == 0);
-
-   for (int i = 0; i < NTESTS; i++)
-      free(nodes[i]);
 
    printf("%s passed\n", __func__);
 }
@@ -301,16 +312,14 @@ static void test_mixed_insert_remove()
    printf("%s passed\n", __func__);
 }
 
-static void test_split_front_and_back()
+static void test_split_front()
 {
    LList list, dst;
    llist_init(&list);
    llist_init(&dst);
 
-   TestNode *nodes[NTESTS];
    for (int i = 0; i < NTESTS; i++) {
-      nodes[i] = make_node(i + 1);
-      llist_push_back(&list, &nodes[i]->node);
+      llist_push_back(&list, &make_node(i + 1)->node);
    }
    // list: 1,2,3,4,5
 
@@ -319,26 +328,29 @@ static void test_split_front_and_back()
    llist_split_front(&dst, &list, at);
 
    // Verify list: 1,2
-   int expected1[] = {1, 2};
-   int idx = 0;
-   for (LNode *curr = llist_first(&list); curr; curr = llist_next(&list, curr)) {
-      TestNode *tn = llist_entry(curr, TestNode, node);
-      assert(tn->value == expected1[idx++]);
+   int       expected1[] = {1, 2};
+   int       idx = 0;
+   TestNode *curr, *next;
+   llist_foreach_entry(&list, curr, next, TestNode, node)
+   {
+      assert(curr->value == expected1[idx++]);
+      llist_remove(llist_from_entry(curr, node));
+      free(curr);
    }
    assert(idx == 2);
+   assert(llist_len(&list) == 0);
 
    // Verify dst: 3,4,5
    int expected2[] = {3, 4, 5};
    idx = 0;
-   for (LNode *curr = llist_first(&dst); curr; curr = llist_next(&dst, curr)) {
-      TestNode *tn = llist_entry(curr, TestNode, node);
-      assert(tn->value == expected2[idx++]);
+   llist_foreach_entry(&dst, curr, next, TestNode, node)
+   {
+      assert(curr->value == expected2[idx++]);
+      llist_remove(llist_from_entry(curr, node));
+      free(curr);
    }
    assert(idx == 3);
-
-   // Cleanup
-   for (int i = 0; i < NTESTS; i++)
-      free(nodes[i]);
+   assert(llist_len(&dst) == 0);
 
    printf("%s passed\n", __func__);
 }
@@ -361,63 +373,75 @@ static void test_split_back()
    llist_split_back(&dst, &list, at);
 
    // Verify dst: 1,2,3
-   int expected1[] = {1, 2, 3};
-   int idx = 0;
-   for (LNode *curr = llist_first(&dst); curr; curr = llist_next(&dst, curr)) {
-      TestNode *tn = llist_entry(curr, TestNode, node);
-      assert(tn->value == expected1[idx++]);
+   int       expected1[] = {1, 2, 3};
+   int       idx = 0;
+   TestNode *curr, *next;
+   llist_foreach_entry(&dst, curr, next, TestNode, node)
+   {
+      assert(curr->value == expected1[idx++]);
+      llist_remove(llist_from_entry(curr, node));
+      free(curr);
    }
    assert(idx == 3);
+   assert(llist_len(&dst) == 0);
 
    // Verify list: 4,5
    int expected2[] = {4, 5};
    idx = 0;
-   for (LNode *curr = llist_first(&list); curr; curr = llist_next(&list, curr)) {
-      TestNode *tn = llist_entry(curr, TestNode, node);
-      assert(tn->value == expected2[idx++]);
+   llist_foreach_entry(&list, curr, next, TestNode, node)
+   {
+      assert(curr->value == expected2[idx++]);
+      llist_remove(llist_from_entry(curr, node));
+      free(curr);
    }
    assert(idx == 2);
-
-   // Cleanup
-   for (int i = 0; i < NTESTS; i++)
-      free(nodes[i]);
+   assert(llist_len(&list) == 0);
 
    printf("%s passed\n", __func__);
 }
 
 static void test_join_front_and_back()
 {
-   LList list1, list2;
+   LList list1, list2, list3;
    llist_init(&list1);
    llist_init(&list2);
+   llist_init(&list3);
 
-   TestNode *a = make_node(1);
-   TestNode *b = make_node(2);
-   TestNode *c = make_node(3);
-   TestNode *d = make_node(4);
+   for (int i = 0; i < 2; i++) {
+      llist_push_back(&list1, &make_node(i + 1)->node);
+   }
 
-   llist_push_back(&list1, &a->node);
-   llist_push_back(&list1, &b->node);
+   for (int i = 2; i < 4; i++) {
+      llist_push_back(&list2, &make_node(i + 1)->node);
+   }
 
-   llist_push_back(&list2, &c->node);
-   llist_push_back(&list2, &d->node);
+   for (int i = 4; i < 6; i++) {
+      llist_push_back(&list3, &make_node(i + 1)->node);
+   }
 
-   // Insert list2 after node "a": list1 should become 1,c,d,2
-   llist_join_front(&list2, &a->node);
+   llist_join_front(&list2, llist_get(&list1, 0));
+   assert(llist_len(&list2) == 0);
 
-   int expected[] = {1, 3, 4, 2};
-   int idx = 0;
-   for (LNode *curr = llist_first(&list1); curr; curr = llist_next(&list1, curr)) {
-      TestNode *tn = llist_entry(curr, TestNode, node);
-      assert(tn->value == expected[idx++]);
+   int       expected[] = {1, 3, 4, 2};
+   int       idx = 0;
+   TestNode *curr, *next;
+   llist_foreach_entry(&list1, curr, next, TestNode, node)
+   {
+      assert(curr->value == expected[idx++]);
    }
    assert(idx == 4);
 
-   // Cleanup
-   free(a);
-   free(b);
-   free(c);
-   free(d);
+   llist_join_back(&list3, llist_get(&list1, 0));
+   assert(llist_len(&list3) == 0);
+
+   int       expected2[] = {5, 6, 1, 3, 4, 2};
+   int       idx2 = 0;
+   llist_foreach_entry(&list1, curr, next, TestNode, node)
+   {
+      assert(curr->value == expected2[idx2++]);
+      free(curr);
+   }
+   assert(idx2 == 6);
 
    printf("%s passed\n", __func__);
 }
@@ -469,11 +493,11 @@ int main()
    test_single_element_list();
    test_forward_backward_iteration();
    test_mixed_insert_remove();
-   test_split_front_and_back();
+   test_split_front();
    test_split_back();
    test_join_front_and_back();
    test_replace_and_swap();
-   
+
    printf("%s suite passed!\n", __FILE__);
    return 0;
 }
