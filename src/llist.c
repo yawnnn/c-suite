@@ -110,8 +110,9 @@ void llist_pop_back(LList *list)
 LNode *llist_get(LList *list, size_t index)
 {
    size_t pos = 0;
+   LNode *curr;
 
-   for (LNode *curr = (LNode *)list; (curr = llist_next(list, curr)) != NULL;) {
+   for (curr = (LNode *)list; (curr = llist_next(list, curr)) != NULL;) {
       if (pos++ == index)
          return curr;
    }
@@ -171,8 +172,9 @@ void llist_join_back(LList *list, LNode *at)
 size_t llist_len(const LList *list)
 {
    size_t len = 0;
+   LNode *curr;
 
-   for (LNode *curr = (LNode *)list; (curr = llist_next(list, curr)) != NULL;) {
+   for (curr = (LNode *)list; (curr = llist_next(list, curr)) != NULL;) {
       len++;
    }
 

@@ -179,7 +179,8 @@ void *arena_realloc(Arena *arena, size_t new_size, void *old_ptr, size_t old_siz
 
 void arena_reset(Arena *arena)
 {
-   for (Block *blk = arena->free_list; blk; blk = blk->next) {
+   Block *blk;
+   for (blk = arena->free_list; blk; blk = blk->next) {
       blk->head = (uintptr_t)BLOCK_BEG(blk);
    }
    arena->curr = arena->free_list;
