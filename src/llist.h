@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Alessandro Martone
+ *
+ * This software is released under the MIT License.
+ * https://opensource.org/licenses/MIT
+ */
+
 /**
  * @file llist.h
  */
