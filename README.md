@@ -33,9 +33,5 @@ Additionally the `tests/` directory has tests for everything and they can be use
 
 ### Build & Compatibility
 
-* Compiles out of the box with **any C99‑compliant compiler**
-* **MSVC compatible**, with one exception:
-
-  * `Queue` uses atomic operations. Those come with C99 and i don't think MSVC has them
-
+Compiles with C99 standard, tested on GCC.  
 No external libraries are required.
