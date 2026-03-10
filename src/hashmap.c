@@ -112,7 +112,7 @@ INLINE static float hashmap_load_factor(HashMap *hmap)
 static void hashmap_rehash_inner(HashMap *hmap)
 {
    HashNode **buckets;
-   size_t     n_buckets;
+   Hash       n_buckets;
 
    n_buckets = (Hash)((float)(hmap->n_items * 2) / (hmap->min_load + hmap->max_load));
    n_buckets = roundup_pow2(n_buckets);
@@ -353,7 +353,5 @@ bool hashiter_next(HashIter *hiter)
 /**
  * TODO:
  * - optimize hashmap_merge
- * - is free_fn necessary?
  * - is hashmap_clear necessary?
- * - better hashiter_init?
  */

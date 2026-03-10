@@ -5,6 +5,13 @@
 
 #include "vec.h"
 
+#if defined(_MSC_VER)
+   #if defined(strdup)
+      #undef strdup
+   #endif
+   #define strdup _strdup
+#endif
+
 void test_vec_new_and_empty()
 {
    Vec v;

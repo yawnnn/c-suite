@@ -18,6 +18,10 @@
    #define INLINE
 #endif
 
+#if defined(min)
+   #undef min
+#endif
+
 INLINE static size_t min(size_t a, size_t b)
 {
    return a < b ? a : b;

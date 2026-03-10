@@ -138,7 +138,7 @@ void test_vstr_sprintf()
    char *res1 = "This is test n.001";
    assert(!strcmp(vstr_data(&vs), res1));
    assert(n == strlen(res1));
-   int offset = strlen(res1) - 3;
+   int offset = (int)strlen(res1) - 3;
    n = vstr_sprintf(&vs, offset, "%04d", 2);
    char *res2 = "This is test n.0002";
    assert(!strcmp(vstr_data(&vs), res2));

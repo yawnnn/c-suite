@@ -1,12 +1,12 @@
 # C Suite
 
-A small, self‑contained collection of **useful, no‑nonsense data structures written in C**.
+A small, self‑contained collection of **useful, fundamental data structures written in C**.
 
 The goal of C Suite is to provide practical building blocks that are:
 
 * **Simple** to modify/integrate
-* Relatively **Well‑documented**
-* Relatively **Portable** across compilers
+* **Well‑documented API**
+* **Portable**, see [Build & Compatibility](#Build-&-Compatibility)
 
 No dependencies — just independent `.c` + `.h` pairs you can drop into your project.
 
@@ -27,15 +27,18 @@ No dependencies — just independent `.c` + `.h` pairs you can drop into your pr
 ### Documentation
 
 Each header is **heavily commented** with Doxygen-style docs, and should be sufficent.  
-Additionally the `tests/` directory has tests for everything and they can be used as reference, although the quality is lower there.
+Additionally you can check out the `tests/` and `benches/` directory for examples, although they're not particularly curated for that purpose.
 
 ---
 
 ### Build & Compatibility
 
-* Compiles out of the box with **any C99‑compliant compiler**
-* **MSVC compatible**, with one exception:
+* All data structures (except `Queue`) are **portable C99**
+* Should compile with any standard C compiler (GCC, Clang, MSVC)
+* No external dependencies for the core library
+* Tests and benches have some dependencies
 
-  * `Queue` uses atomic operations. Those come with C99 and i don't think MSVC has them
+#### Queue (SPSC)
 
-No external libraries are required.
+* Requires **C11 atomics** (`<stdatomic.h>`), and on MSVC `/experimental:c11atomics`
+

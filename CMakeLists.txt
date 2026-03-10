@@ -5,10 +5,14 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
 endif()
 
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_compile_options(-Wall)
+if(MSVC)
+    add_compile_options(/W4 /experimental:c11atomics)
+else()
+    add_compile_options(-Wall)
+endif()
 
 set(BASE_LIBS_DIR "" CACHE PATH "Base directory for external libraries")
 
@@ -42,6 +46,10 @@ foreach(test_src ${TEST_FILES})
         PRIVATE
             ${CMAKE_SOURCE_DIR}/src
     )
+
+    if(MSVC)
+        target_compile_options(${test_name} PRIVATE /D_CRT_SECURE_NO_WARNINGS)
+    endif()
 
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()

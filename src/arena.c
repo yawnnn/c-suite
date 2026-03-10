@@ -11,9 +11,7 @@
 
 #include "arena.h"
 
-#if defined(_MSC_VER)
-   #define DEFAULT_ALIGNMENT __alignof(max_align_t)
-#elif defined(__STDC__) && __STDC_VERSION__ >= 201112L
+#if defined(__STDC__) && __STDC_VERSION__ >= 201112L
    #include "stdalign.h"
    #define DEFAULT_ALIGNMENT alignof(max_align_t)
 #else
@@ -26,9 +24,7 @@
    #define DEFAULT_ALIGNMENT 8
 #endif
 
-#if defined(_MSC_VER)
-   #define FLEXIBLE_ARRAY 0
-#elif defined(__STDC__) && __STDC_VERSION__ >= 199901L
+#if defined(__STDC__) && __STDC_VERSION__ >= 199901L
    #define FLEXIBLE_ARRAY
 #endif
 
@@ -48,7 +44,7 @@ typedef struct Block {
    uintptr_t head; /**< beginning of free memory */
 
 #ifdef FLEXIBLE_ARRAY
-   char *beg[FLEXIBLE_ARRAY]; /**< beginning of allocation */
+   char beg[]; /**< beginning of allocation */
 #endif
 } Block;
 

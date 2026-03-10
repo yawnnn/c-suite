@@ -14,8 +14,6 @@
 #if defined(__STDC__) && __STDC_VERSION__ >= 201112L
    #include "stdalign.h"
    #define DEFAULT_ALIGNMENT alignof(max_align_t)
-#elif defined(_MSC_VER)
-   #define DEFAULT_ALIGNMENT __alignof(max_align_t)
 #else
    /**
     * @brief generic alignment
