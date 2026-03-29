@@ -77,9 +77,7 @@ INLINE static Vec *vec_from_pv(void **pv)
 #define VEC_FROM_PV_CONST(pv) ((const Vec *)vec_from_pv((void **)(pv)))
 
 /**
- * @brief new Vec
- *
- * the Vec is not allocated
+ * @brief initialize empty struct
  *
  * @param[out] v Vec
  * @param[in] sizeof_t size of the single elements it's going to contain
@@ -89,9 +87,7 @@ INLINE static Vec *vec_from_pv(void **pv)
 void **vec_new(Vec *v, size_t sizeof_t);
 
 /**
- * @brief new Vec with reserved space
- *
- * the Vec has 0 length
+ * @brief initialize struct and reserve space (without initializing them or the length)
  *
  * @param[out] v Vec
  * @param[in] sizeof_t size of the single elements it's going to contain
@@ -102,20 +98,7 @@ void **vec_new(Vec *v, size_t sizeof_t);
 void **vec_new_with(Vec *v, size_t sizeof_t, size_t nelem);
 
 /**
- * @brief new Vec with elements initialized to zero
- *
- * the Vec has @p nelem length
- *
- * @param[out] v Vec
- * @param[in] sizeof_t size of the single elements it's going to contain
- * @param[in] nelem number of elements to initialize to zero
- * 
- * @return ambivalent pointer that can be used as `Vec *` (see `VEC_FROM_PV) or as `T **` for *some* type-safety (see `VEC_TO_PV`)
- */
-void **vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem);
-
-/**
- * @brief new Vec copied from existing array
+ * @brief initialize struct with the content of an array
  *
  * @p arr is shallow-copied
  *
@@ -247,12 +230,12 @@ bool vec_set(Vec *v, const void *elem, size_t pos);
  * 
  * @param[in,out] v Vec
  * @param[in] pos starting index of the elements
- * @param[in] elems array of elements
+ * @param[in] elems array of elements. if NULL, the new elements are zeroed
  * @param[in] nelem number of elements of the array
  * 
- * @return false in case of failure
+ * @return pointer to the first inserted element, or NULL in case of failure
  */
-bool vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem);
+void *vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem);
 
 /**
  * @brief insert element at pos through shallow-copy
@@ -263,9 +246,9 @@ bool vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem);
  * @param[in] pos index of the element
  * @param[in] elem element to insert
  * 
- * @return false in case of failure
+ * @return pointer to the inserted element, or NULL in case of failure
  */
-INLINE static bool vec_insert(Vec *v, size_t pos, const void *elem)
+INLINE static void *vec_insert(Vec *v, size_t pos, const void *elem)
 {
    return vec_insert_n(v, pos, elem, 1);
 }
@@ -278,9 +261,9 @@ INLINE static bool vec_insert(Vec *v, size_t pos, const void *elem)
  * @param[in,out] v Vec
  * @param[in] elem element to insert
  * 
- * @return false in case of failure
+ * @return pointer to the inserted element, or NULL in case of failure
  */
-INLINE static bool vec_push(Vec *v, const void *elem)
+INLINE static void *vec_push(Vec *v, const void *elem)
 {
    return vec_insert_n(v, v->len, elem, 1);
 }

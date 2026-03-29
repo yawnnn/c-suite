@@ -52,15 +52,6 @@ void **vec_new_with(Vec *v, size_t sizeof_t, size_t nelem)
    return pv;
 }
 
-void **vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem)
-{
-   void **pv = vec_new_with(v, nelem, sizeof_t);
-   vec_memset(v, v->ptr, 0, nelem);
-   v->len = nelem;
-
-   return pv;
-}
-
 void **vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem)
 {
    void **pv = vec_new(v, sizeof_t);
@@ -116,6 +107,7 @@ bool vec_get(const Vec *v, size_t pos, void *elem)
       return false;
 
    vec_memcpy(v, elem, vec_at_unchecked_const(v, pos), 1);
+
    return true;
 }
 
@@ -125,20 +117,24 @@ bool vec_set(Vec *v, const void *elem, size_t pos)
       return false;
 
    vec_memcpy(v, vec_at_unchecked(v, pos), elem, 1);
+
    return true;
 }
 
-bool vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem)
+void *vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem)
 {
    if (pos > v->len)
-      return false;
+      return NULL;
 
    vec_reserve(v, v->len + nelem);
    vec_memmove(v, vec_at_unchecked(v, pos + nelem), vec_at_unchecked(v, pos), v->len - pos);
-   vec_memcpy(v, vec_at_unchecked(v, pos), elems, nelem);
+   if (elems)
+      vec_memcpy(v, vec_at_unchecked(v, pos), elems, nelem);
+   else
+      vec_memset(v, vec_at_unchecked(v, pos), 0, nelem);
    v->len += nelem;
 
-   return true;
+   return vec_at_unchecked(v, pos);
 }
 
 bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
@@ -148,13 +144,14 @@ bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
 
    if (elems)
       vec_memcpy(v, elems, vec_at_unchecked(v, pos), nelem);
-   if (pos + nelem < v->len)
+   if (pos + nelem < v->len) {
       vec_memmove(
          v,
          vec_at_unchecked(v, pos),
          vec_at_unchecked(v, pos + nelem),
          v->len - (pos + nelem)
       );
+   }
    v->len -= nelem;
 
    return true;

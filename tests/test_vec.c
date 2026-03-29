@@ -35,19 +35,6 @@ void test_vec_new_with()
    printf("%s passed\n", __func__);
 }
 
-void test_vec_new_with_zeroed()
-{
-   Vec v;
-   size_t len;
-   vec_new_with_zeroed(&v, sizeof(int), 4);
-   int *data = VEC_SLICE(int, &v, &len);
-   for (int i = 0; i < 4; i++)
-      assert(data[i] == 0);
-   vec_free(&v);
-   
-   printf("%s passed\n", __func__);
-}
-
 void test_vec_from()
 {
    int arr[] = {1, 2, 3};
@@ -81,7 +68,8 @@ void test_vec_set_get()
 {
    Vec v;
    int a = 7;
-   vec_new_with_zeroed(&v, sizeof(int), 1);
+   vec_new(&v, sizeof(int));
+   vec_push(&v, NULL);
    vec_set(&v, &a, 0);
    int b = 0;
    vec_get(&v, 0, &b);
@@ -249,11 +237,28 @@ void test_vec_pv()
    printf("%s passed\n", __func__);
 }
 
+void test_vec_insert_null()
+{
+   Vec v;
+   
+   vec_new(&v, sizeof(int));
+   int a = 1;
+   vec_insert(&v, 0, &a);
+   int *b = (int *)vec_insert(&v, 1, NULL);
+   *b = 2;
+   int *elem0 = (int *)vec_at(&v, 0);
+   int *elem1 = (int *)vec_at(&v, 1);
+   assert(*elem0 == 1);
+   assert(*elem1 == 2);
+   vec_free(&v);
+   
+   printf("%s passed\n", __func__);
+}
+
 int main()
 {
    test_vec_new_and_empty();
    test_vec_new_with();
-   test_vec_new_with_zeroed();
    test_vec_from();
    test_vec_push_and_elem_at();
    test_vec_set_get();
@@ -263,6 +268,7 @@ int main()
    test_vec_swap();
    test_vec_mem_ops();
    test_vec_pv();
+   test_vec_insert_null();
    
    printf("%s suite passed!\n", __FILE__);
    return 0;
