@@ -157,14 +157,29 @@ bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
    return true;
 }
 
-bool vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp)
+bool vec_swap(Vec *v, size_t pos1, size_t pos2)
 {
+   char tmp[256];
+   char *p1, *p2;
+   size_t leftover;
+
    if (pos1 >= v->len || pos2 >= v->len)
       return false;
 
-   vec_memcpy(v, tmp, vec_at_unchecked(v, pos1), 1);
-   vec_memcpy(v, vec_at_unchecked(v, pos1), vec_at_unchecked(v, pos2), 1);
-   vec_memcpy(v, vec_at_unchecked(v, pos2), tmp, 1);
+   p1 = vec_at_unchecked(v, pos1);
+   p2 = vec_at_unchecked(v, pos2);
+   leftover = v->sizeof_t;
+
+   while (leftover) {
+      size_t chunk = leftover < sizeof(tmp) ? leftover : sizeof(tmp);
+
+      memcpy(tmp, p1, chunk);
+      memcpy(p1, p2, chunk);
+      memcpy(p2, tmp, chunk);
+      p1 += chunk;
+      p2 += chunk;
+      leftover -= chunk;
+   }
 
    return true;
 }

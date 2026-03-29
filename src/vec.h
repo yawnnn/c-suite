@@ -330,17 +330,14 @@ INLINE static bool vec_is_empty(const Vec *v)
 
 /**
  * @brief swap two elements of the Vec
- *
- * @p tmp is required to simplify things
  * 
  * @param[in,out] v Vec
  * @param[in] pos1 index of the element
  * @param[in] pos2 index of the element
- * @param[out] tmp memory big enough to contain an element of the vector
  * 
  * @return false in case of failure
  */
-bool vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp);
+bool vec_swap(Vec *v, size_t pos1, size_t pos2);
 
 /**
  * @brief memset for @p v 's elements

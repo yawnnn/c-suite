@@ -138,15 +138,23 @@ void test_vec_truncate_shrink()
 
 void test_vec_swap()
 {
+   typedef struct Big {
+      char x[300];
+   } Big;
+   
    Vec v;
-   int arr[] = {1, 2};
-   vec_from(&v, sizeof(int), arr, 2);
-   int tmp;
-   vec_swap(&v, 0, 1, &tmp);
-   int a, b;
+   Big arr[2] = {0};
+   memset(&arr[0], 'A', sizeof(Big));
+   memset(&arr[1], 'B', sizeof(Big));
+   vec_from(&v, sizeof(Big), arr, 2);
+   vec_swap(&v, 0, 1);
+   Big a, b;
    vec_get(&v, 0, &a);
    vec_get(&v, 1, &b);
-   assert(a == 2 && b == 1);
+   for (int i = 0; i < sizeof(Big); i++) {
+      assert(a.x[i] == 'B');
+      assert(b.x[i] == 'A');
+   }
    vec_free(&v);
    
    printf("%s passed\n", __func__);
