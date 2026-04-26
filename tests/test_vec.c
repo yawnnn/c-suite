@@ -35,19 +35,6 @@ void test_vec_new_with()
    printf("%s passed\n", __func__);
 }
 
-void test_vec_new_with_zeroed()
-{
-   Vec v;
-   size_t len;
-   vec_new_with_zeroed(&v, sizeof(int), 4);
-   int *data = VEC_SLICE(int, &v, &len);
-   for (int i = 0; i < 4; i++)
-      assert(data[i] == 0);
-   vec_free(&v);
-   
-   printf("%s passed\n", __func__);
-}
-
 void test_vec_from()
 {
    int arr[] = {1, 2, 3};
@@ -55,7 +42,7 @@ void test_vec_from()
    size_t len;
    vec_from(&v, sizeof(int), arr, 3);
    assert(v.len == 3);
-   int *data = VEC_SLICE(int, &v, &len);
+   int *data = vec_slice(&v, &len);
    for (int i = 0; i < 3; i++)
       assert(data[i] == arr[i]);
    vec_free(&v);
@@ -81,7 +68,8 @@ void test_vec_set_get()
 {
    Vec v;
    int a = 7;
-   vec_new_with_zeroed(&v, sizeof(int), 1);
+   vec_new(&v, sizeof(int));
+   vec_push(&v, NULL);
    vec_set(&v, &a, 0);
    int b = 0;
    vec_get(&v, 0, &b);
@@ -150,15 +138,23 @@ void test_vec_truncate_shrink()
 
 void test_vec_swap()
 {
+   typedef struct Big {
+      char x[300];
+   } Big;
+   
    Vec v;
-   int arr[] = {1, 2};
-   vec_from(&v, sizeof(int), arr, 2);
-   int tmp;
-   vec_swap(&v, 0, 1, &tmp);
-   int a, b;
-   vec_get(&v, 0, &a);
-   vec_get(&v, 1, &b);
-   assert(a == 2 && b == 1);
+   Big arr[4] = {0};
+   memset(&arr[0], 'A', sizeof(Big));
+   memset(&arr[1], 'B', sizeof(Big));
+   memset(&arr[2], 'C', sizeof(Big));
+   memset(&arr[3], 'D', sizeof(Big));
+   vec_from(&v, sizeof(Big), arr, 4);
+   vec_swap(&v, 0, 2, 2);
+   Big tmp[2];
+   memcpy(tmp, &arr[0], sizeof(Big) * 2);
+   memcpy(&arr[0], &arr[2], sizeof(Big) * 2);
+   memcpy(&arr[2], tmp, sizeof(Big) * 2);
+   assert(memcmp(vec_at(&v, 0), &arr[0], sizeof(Big) * 4) == 0);
    vec_free(&v);
    
    printf("%s passed\n", __func__);
@@ -188,63 +184,20 @@ void test_vec_mem_ops()
    printf("%s passed\n", __func__);
 }
 
-static int test_vec_pv_sum_and_truncate(int **pvi)
+void test_vec_insert_null()
 {
-   Vec *vi = VEC_FROM_PV(pvi);
-   int  total = 0;
-   for (size_t i = 0; i < vi->len; i++) {
-      total += (*pvi)[i];
-   }
-   vec_truncate(vi, 0);
-   return total;
-}
-
-static void test_vec_pv_join_in_place(char ***pvps, char *join)
-{
-   Vec *vps = VEC_FROM_PV(pvps);
-   Vec  vs;
-   vec_new(&vs, sizeof(char));  // should use Vstr here of course
-   for (size_t i = 0; i < vps->len; i++) {
-      if (i)
-         vec_insert_n(&vs, vs.len, join, strlen(join));
-      vec_insert_n(&vs, vs.len, (*pvps)[i], strlen((*pvps)[i]));
-   }
-   char c0 = '\0';
-   vec_push(&vs, &c0);
-   char *ps;
-   while (vec_pop(vps, &ps)) {
-      free(ps);
-   }
-   size_t len;
-   char *psjoin = VEC_SLICE(char, &vs, &len);  // dont free vs
-   vec_push(vps, &psjoin);
-}
-
-void test_vec_pv()
-{
-   int   values[] = {1, 2, 3};
-   Vec   vi;
-   int **pvi = (int **)vec_from(&vi, sizeof(int), values, sizeof(values) / sizeof(values[0]));
-   assert(pvi == VEC_TO_PV(int, &vi));
-   assert(&vi == VEC_FROM_PV(pvi));
-   int   n = test_vec_pv_sum_and_truncate(pvi);
-   assert(vi.len == 0);
-   assert(n == 1 + 2 + 3);
-   vec_free(&vi);
-
-   const char *words[] = {strdup("hello"), strdup("world")};
-   Vec         vps;
-   char ***pvps = (char ***)vec_from(&vps, sizeof(char *), words, sizeof(words) / sizeof(words[0]));
-   test_vec_pv_join_in_place(pvps, "-");
-   assert(vps.len == 1);
-   char *ps;
-   vec_get(VEC_FROM_PV(pvps), 0, &ps);
-   assert(!strcmp(ps, "hello-world"));
-   while (vec_pop(&vps, &ps)) {
-      free(ps);
-   }
-   vec_free(&vps);
-
+   Vec v;
+   
+   vec_new(&v, sizeof(int));
+   int a = 1;
+   vec_insert(&v, 0, &a);
+   int *b = (int *)vec_insert(&v, 1, NULL);
+   *b = 2;
+   int *elem0 = (int *)vec_at(&v, 0);
+   int *elem1 = (int *)vec_at(&v, 1);
+   assert(*elem0 == 1);
+   assert(*elem1 == 2);
+   vec_free(&v);
    
    printf("%s passed\n", __func__);
 }
@@ -253,7 +206,6 @@ int main()
 {
    test_vec_new_and_empty();
    test_vec_new_with();
-   test_vec_new_with_zeroed();
    test_vec_from();
    test_vec_push_and_elem_at();
    test_vec_set_get();
@@ -262,7 +214,7 @@ int main()
    test_vec_truncate_shrink();
    test_vec_swap();
    test_vec_mem_ops();
-   test_vec_pv();
+   test_vec_insert_null();
    
    printf("%s suite passed!\n", __FILE__);
    return 0;

@@ -24,7 +24,7 @@
  */
 INLINE static char *vec_at_unchecked(Vec *v, size_t pos)
 {
-   return &((char *)v->ptr)[pos * v->sizeof_t];
+   return &((char *)v->ptr)[pos * v->size];
 }
 
 /**
@@ -35,46 +35,30 @@ INLINE static const char *vec_at_unchecked_const(const Vec *v, size_t pos)
    return vec_at_unchecked((Vec *)v, pos);
 }
 
-void **vec_new(Vec *v, size_t sizeof_t)
+void vec_new(Vec *v, size_t size)
 {
    v->ptr = NULL;
    v->len = v->cap = 0;
-   v->sizeof_t = sizeof_t;
-
-   return vec_to_pv(v);
+   v->size = size;
 }
 
-void **vec_new_with(Vec *v, size_t sizeof_t, size_t nelem)
+void vec_new_with(Vec *v, size_t size, size_t nelem)
 {
-   void **pv = vec_new(v, sizeof_t);
+   vec_new(v, size);
    vec_reserve(v, nelem);
-
-   return pv;
 }
 
-void **vec_new_with_zeroed(Vec *v, size_t sizeof_t, size_t nelem)
+void vec_from(Vec *v, size_t size, const void *arr, size_t nelem)
 {
-   void **pv = vec_new_with(v, nelem, sizeof_t);
-   vec_memset(v, v->ptr, 0, nelem);
-   v->len = nelem;
-
-   return pv;
-}
-
-void **vec_from(Vec *v, size_t sizeof_t, const void *arr, size_t nelem)
-{
-   void **pv = vec_new(v, sizeof_t);
+   vec_new(v, size);
    vec_insert_n(v, 0, arr, nelem);
-
-   return pv;
 }
 
 void vec_free(Vec *v)
 {
-   if (v->ptr) {
+   if (v->cap)
       free(v->ptr);
-      v->ptr = NULL;
-   }
+   v->ptr = NULL;
    v->len = v->cap = 0;
 }
 
@@ -92,9 +76,9 @@ void vec_reserve(Vec *v, size_t nelem)
          v->cap = nelem;
 
       if (v->ptr)
-         v->ptr = realloc(v->ptr, v->cap * v->sizeof_t);
+         v->ptr = realloc(v->ptr, v->cap * v->size);
       else
-         v->ptr = malloc(v->cap * v->sizeof_t);
+         v->ptr = malloc(v->cap * v->size);
    }
 }
 
@@ -103,7 +87,7 @@ void vec_shrink_to_fit(Vec *v)
    if (v->cap > v->len) {
       if (v->len) {
          v->cap = v->len;
-         v->ptr = realloc(v->ptr, v->cap * v->sizeof_t);
+         v->ptr = realloc(v->ptr, v->cap * v->size);
       }
       else
          vec_free(v);
@@ -116,6 +100,7 @@ bool vec_get(const Vec *v, size_t pos, void *elem)
       return false;
 
    vec_memcpy(v, elem, vec_at_unchecked_const(v, pos), 1);
+
    return true;
 }
 
@@ -125,20 +110,24 @@ bool vec_set(Vec *v, const void *elem, size_t pos)
       return false;
 
    vec_memcpy(v, vec_at_unchecked(v, pos), elem, 1);
+
    return true;
 }
 
-bool vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem)
+void *vec_insert_n(Vec *v, size_t pos, const void *elems, size_t nelem)
 {
    if (pos > v->len)
-      return false;
+      return NULL;
 
    vec_reserve(v, v->len + nelem);
    vec_memmove(v, vec_at_unchecked(v, pos + nelem), vec_at_unchecked(v, pos), v->len - pos);
-   vec_memcpy(v, vec_at_unchecked(v, pos), elems, nelem);
+   if (elems)
+      vec_memcpy(v, vec_at_unchecked(v, pos), elems, nelem);
+   else
+      vec_memset(v, vec_at_unchecked(v, pos), 0, nelem);
    v->len += nelem;
 
-   return true;
+   return vec_at_unchecked(v, pos);
 }
 
 bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
@@ -148,26 +137,49 @@ bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
 
    if (elems)
       vec_memcpy(v, elems, vec_at_unchecked(v, pos), nelem);
-   if (pos + nelem < v->len)
+   
+   if (pos + nelem < v->len) {
       vec_memmove(
          v,
          vec_at_unchecked(v, pos),
          vec_at_unchecked(v, pos + nelem),
          v->len - (pos + nelem)
       );
+   }
    v->len -= nelem;
 
    return true;
 }
 
-bool vec_swap(Vec *v, size_t pos1, size_t pos2, void *tmp)
+bool vec_swap(Vec *v, size_t pos1, size_t pos2, size_t nelem)
 {
-   if (pos1 >= v->len || pos2 >= v->len)
+   char tmp[256];
+   char *p1, *p2;
+   size_t leftover;
+
+   if (pos1 == pos2)
+      return true;
+
+   if (pos1 + nelem > v->len 
+      || pos2 + nelem > v->len 
+      || (pos1 > pos2 && pos1 < pos2 + nelem)
+      || (pos2 > pos1 && pos2 < pos1 + nelem))
       return false;
 
-   vec_memcpy(v, tmp, vec_at_unchecked(v, pos1), 1);
-   vec_memcpy(v, vec_at_unchecked(v, pos1), vec_at_unchecked(v, pos2), 1);
-   vec_memcpy(v, vec_at_unchecked(v, pos2), tmp, 1);
+   p1 = vec_at_unchecked(v, pos1);
+   p2 = vec_at_unchecked(v, pos2);
+   leftover = v->size * nelem;
+
+   while (leftover) {
+      size_t chunk = leftover < sizeof(tmp) ? leftover : sizeof(tmp);
+
+      memcpy(tmp, p1, chunk);
+      memcpy(p1, p2, chunk);
+      memcpy(p2, tmp, chunk);
+      p1 += chunk;
+      p2 += chunk;
+      leftover -= chunk;
+   }
 
    return true;
 }
