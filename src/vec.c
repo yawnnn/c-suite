@@ -35,37 +35,52 @@ INLINE static const char *vec_at_unchecked_const(const Vec *v, size_t pos)
    return vec_at_unchecked((Vec *)v, pos);
 }
 
-void vec_new(Vec *v, size_t size)
+void vec_new(Vec *v, size_t size, FreeFn free_fn)
 {
    v->ptr = NULL;
    v->len = v->cap = 0;
    v->size = size;
+   v->free_fn = free_fn;
 }
 
-void vec_new_with(Vec *v, size_t size, size_t nelem)
+void vec_new_with(Vec *v, size_t size, size_t nelem, FreeFn free_fn)
 {
-   vec_new(v, size);
+   vec_new(v, size, free_fn);
    vec_reserve(v, nelem);
 }
 
-void vec_from(Vec *v, size_t size, const void *arr, size_t nelem)
+void vec_from(Vec *v, size_t size, const void *arr, size_t nelem, FreeFn free_fn)
 {
-   vec_new(v, size);
+   vec_new(v, size, free_fn);
    vec_insert_n(v, 0, arr, nelem);
 }
 
 void vec_free(Vec *v)
 {
-   if (v->cap)
+   if (v->cap) {
+      if (v->free_fn) {
+         size_t i;
+         for (i = 0; i < v->len; i++) {
+            v->free_fn(vec_at_unchecked(v, i));
+         }
+      }
       free(v->ptr);
+   }
    v->ptr = NULL;
    v->len = v->cap = 0;
 }
 
 void vec_truncate(Vec *v, size_t new_len)
 {
-   if (new_len < v->len)
+   if (new_len < v->len) {
+      if (v->free_fn) {
+         size_t i;
+         for (i = new_len; i < v->len; i++) {
+            v->free_fn(vec_at_unchecked(v, i));
+         }
+      }
       v->len = new_len;
+   }
 }
 
 void vec_reserve(Vec *v, size_t nelem)
@@ -109,6 +124,8 @@ bool vec_set(Vec *v, const void *elem, size_t pos)
    if (pos >= v->len)
       return false;
 
+   if (v->free_fn)
+      v->free_fn(vec_at_unchecked(v, pos));
    vec_memcpy(v, vec_at_unchecked(v, pos), elem, 1);
 
    return true;
@@ -137,6 +154,12 @@ bool vec_remove_n(Vec *v, size_t pos, void *elems, size_t nelem)
 
    if (elems)
       vec_memcpy(v, elems, vec_at_unchecked(v, pos), nelem);
+   else if (v->free_fn) {
+      size_t i;
+      for (i = pos; i < pos + nelem; i++) {
+         v->free_fn(vec_at_unchecked(v, i));
+      }
+   }
    
    if (pos + nelem < v->len) {
       vec_memmove(

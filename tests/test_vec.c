@@ -16,7 +16,7 @@ void test_vec_new_and_empty()
 {
    Vec v;
    size_t len;
-   vec_new(&v, sizeof(int));
+   vec_new(&v, sizeof(int), NULL);
    assert(vec_slice(&v, &len) == NULL);
    assert(vec_is_empty(&v));
    vec_free(&v);
@@ -28,7 +28,7 @@ void test_vec_new_with()
 {
    Vec v;
    size_t len;
-   vec_new_with(&v, sizeof(int), 10);
+   vec_new_with(&v, sizeof(int), 10, NULL);
    assert(vec_slice(&v, &len) == NULL);  // Still 0-length
    vec_free(&v);
    
@@ -40,7 +40,7 @@ void test_vec_from()
    int arr[] = {1, 2, 3};
    Vec v;
    size_t len;
-   vec_from(&v, sizeof(int), arr, 3);
+   vec_from(&v, sizeof(int), arr, 3, NULL);
    assert(v.len == 3);
    int *data = vec_slice(&v, &len);
    for (int i = 0; i < 3; i++)
@@ -53,7 +53,7 @@ void test_vec_from()
 void test_vec_push_and_elem_at()
 {
    Vec v;
-   vec_new(&v, sizeof(int));
+   vec_new(&v, sizeof(int), NULL);
    int a = 42;
    vec_push(&v, &a);
    assert(v.len == 1);
@@ -68,7 +68,7 @@ void test_vec_set_get()
 {
    Vec v;
    int a = 7;
-   vec_new(&v, sizeof(int));
+   vec_new(&v, sizeof(int), NULL);
    vec_push(&v, NULL);
    vec_set(&v, &a, 0);
    int b = 0;
@@ -82,7 +82,7 @@ void test_vec_set_get()
 void test_vec_insert_remove()
 {
    Vec v;
-   vec_new(&v, sizeof(int));
+   vec_new(&v, sizeof(int), NULL);
    int x = 10, y = 20, z = 30;
    vec_push(&v, &x);
    vec_push(&v, &z);
@@ -108,7 +108,7 @@ void test_vec_insert_remove()
 void test_vec_pop()
 {
    Vec v;
-   vec_new(&v, sizeof(int));
+   vec_new(&v, sizeof(int), NULL);
    int a = 100;
    vec_push(&v, &a);
    int b;
@@ -124,7 +124,7 @@ void test_vec_truncate_shrink()
 {
    Vec v;
    int arr[] = {1, 2, 3, 4};
-   vec_from(&v, sizeof(int), arr, 4);
+   vec_from(&v, sizeof(int), arr, 4, NULL);
    vec_truncate(&v, 2);
    assert(v.len == 2);
    int value;
@@ -148,7 +148,7 @@ void test_vec_swap()
    memset(&arr[1], 'B', sizeof(Big));
    memset(&arr[2], 'C', sizeof(Big));
    memset(&arr[3], 'D', sizeof(Big));
-   vec_from(&v, sizeof(Big), arr, 4);
+   vec_from(&v, sizeof(Big), arr, 4, NULL);
    vec_swap(&v, 0, 2, 2);
    Big tmp[2];
    memcpy(tmp, &arr[0], sizeof(Big) * 2);
@@ -165,7 +165,7 @@ void test_vec_mem_ops()
    Vec v;
    size_t len;
    int arr[] = {9, 8, 7};
-   vec_from(&v, sizeof(int), arr, 3);
+   vec_from(&v, sizeof(int), arr, 3, NULL);
 
    int copy[3];
    vec_memcpy(&v, copy, vec_slice(&v, &len), 3);
@@ -188,7 +188,7 @@ void test_vec_insert_null()
 {
    Vec v;
    
-   vec_new(&v, sizeof(int));
+   vec_new(&v, sizeof(int), NULL);
    int a = 1;
    vec_insert(&v, 0, &a);
    int *b = (int *)vec_insert(&v, 1, NULL);
@@ -198,6 +198,49 @@ void test_vec_insert_null()
    assert(*elem0 == 1);
    assert(*elem1 == 2);
    vec_free(&v);
+   
+   printf("%s passed\n", __func__);
+}
+
+typedef struct OwnsMem {
+   char *mem;
+} OwnsMem;
+
+static int ownsmem_alloc_count = 0;
+
+static void new_ownsmem(OwnsMem *p, const char *str)
+{
+   ownsmem_alloc_count++;
+   p->mem = strdup(str);
+}
+
+static void free_ownsmem(OwnsMem *p)
+{
+   ownsmem_alloc_count--;
+   free(p->mem);
+}
+
+void test_vec_autofree()
+{
+   Vec v;
+   
+   vec_new(&v, sizeof(OwnsMem), (FreeFn)free_ownsmem);
+   for (int i = 0; i < 5; i++) {
+      OwnsMem om;
+      new_ownsmem(&om, "test");
+      vec_push(&v, &om);
+   }
+   assert(ownsmem_alloc_count == 5);
+   for (size_t i = 0; i < v.len; i++) {
+      if (i % 2) {
+         OwnsMem om;
+         vec_remove(&v, i, &om);
+         assert(strcmp(om.mem, "test") == 0);
+         free_ownsmem(&om);
+      }
+   }
+   vec_free(&v);
+   assert(ownsmem_alloc_count == 0);
    
    printf("%s passed\n", __func__);
 }
@@ -215,6 +258,7 @@ int main()
    test_vec_swap();
    test_vec_mem_ops();
    test_vec_insert_null();
+   test_vec_autofree();
    
    printf("%s suite passed!\n", __FILE__);
    return 0;

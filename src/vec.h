@@ -24,6 +24,8 @@
    #define INLINE
 #endif
 
+typedef void (*FreeFn)(void *); /**< free function for elements */
+
 /**
  * @brief dynamic heap-allocated array
  */
@@ -32,6 +34,7 @@ typedef struct Vec {
    size_t len; /**< number of usable elements */
    size_t cap; /**< number of elements for which there is space allocated */
    size_t size; /**< size of the data type to be held */
+   FreeFn free_fn; /**< if != NULL, free function for elements */
 } Vec;
 
 /**
@@ -39,8 +42,9 @@ typedef struct Vec {
  *
  * @param[out] v Vec
  * @param[in] size size of the single elements it's going to contain
+ * @param[in] free_fn free function for elements, or NULL
  */
-void vec_new(Vec *v, size_t size);
+void vec_new(Vec *v, size_t size, FreeFn free_fn);
 
 /**
  * @brief initialize struct and reserve space (without initializing them or the length)
@@ -48,8 +52,9 @@ void vec_new(Vec *v, size_t size);
  * @param[out] v Vec
  * @param[in] size size of the single elements it's going to contain
  * @param[in] nelem number of elements to reserve memory for
+ * @param[in] free_fn free function for elements, or NULL
  */
-void vec_new_with(Vec *v, size_t size, size_t nelem);
+void vec_new_with(Vec *v, size_t size, size_t nelem, FreeFn free_fn);
 
 /**
  * @brief initialize struct with the content of an array
@@ -60,8 +65,9 @@ void vec_new_with(Vec *v, size_t size, size_t nelem);
  * @param[in] size size of the single elements it's going to contain
  * @param[in] arr source array
  * @param[in] nelem number of elements of array
+ * @param[in] free_fn free function for elements, or NULL
  */
-void vec_from(Vec *v, size_t size, const void *arr, size_t nelem);
+void vec_from(Vec *v, size_t size, const void *arr, size_t nelem, FreeFn free_fn);
 
 /**
  * @brief release memory
@@ -204,6 +210,8 @@ INLINE static void *vec_push(Vec *v, const void *elem)
  * @brief bulk remove elements starting at pos, shifting the ones after
  *
  * doesn't deallocate the array's memory. see @p vec_shrink_to_fit
+ * if the element owns memory, that will be freed automatically through @p free_fn
+ * or through @p elem if it's not NULL
  * 
  * @param[in,out] v Vec
  * @param[in] pos index of the elements
