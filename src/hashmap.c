@@ -52,25 +52,25 @@ INLINE static Hash calc_hash(const void *key, size_t key_size, HashFn hash_fn, H
 //
 // MARK: HashNode
 //
-INLINE static bool hashnode_eq(HashNode *hnode, const void *key, size_t real_size)
+INLINE static bool hashnode_eq(HashNode *node, const void *key, size_t real_size)
 {
-   if (hnode->key_size != real_size)
+   if (node->key_size != real_size)
       return false;
-   if (hnode->key == key)
+   if (node->key == key)
       return true;
-   return !memcmp(hnode->key, key, hnode->key_size);
+   return !memcmp(node->key, key, node->key_size);
 }
 
 INLINE static HashNode *hashnode_new(const void *key, size_t key_size, void *value)
 {
-   HashNode *hnode = (HashNode *)malloc(sizeof(HashNode));
+   HashNode *node = (HashNode *)malloc(sizeof(HashNode));
 
-   hnode->key = key;
-   hnode->key_size = key_size;
-   hnode->value = value;
-   hnode->next = NULL;
+   node->key = key;
+   node->key_size = key_size;
+   node->value = value;
+   node->next = NULL;
 
-   return hnode;
+   return node;
 }
 
 //
@@ -97,181 +97,181 @@ INLINE static Hash roundup_pow2(Hash num)
    return num;
 }
 
-INLINE static size_t hashmap_key_size(HashMap *hmap, const void *key)
+INLINE static size_t hashmap_key_size(HashMap *map, const void *key)
 {
-   if (hmap->key_size == KEY_SIZE_STR)
+   if (map->base_key_size == KEY_SIZE_STR)
       return key ? strlen((const char *)key) : 0;
-   return hmap->key_size;
+   return map->base_key_size;
 }
 
-INLINE static float hashmap_load_factor(HashMap *hmap)
+INLINE static float hashmap_load(HashMap *map)
 {
-   return (float)hmap->n_items / (float)hmap->n_buckets;
+   return (float)map->n_items / (float)map->n_buckets;
 }
 
-static void hashmap_rehash_inner(HashMap *hmap)
+static void hashmap_rehash_inner(HashMap *map)
 {
    HashNode **buckets;
    Hash       n_buckets;
 
-   n_buckets = (Hash)((float)(hmap->n_items * 2) / (hmap->min_load + hmap->max_load));
+   n_buckets = (Hash)((float)(map->n_items * 2) / (map->min_load + map->max_load));
    n_buckets = roundup_pow2(n_buckets);
-   if (n_buckets == hmap->n_buckets)
+   if (n_buckets == map->n_buckets)
       return;
 
    buckets = (HashNode **)calloc((size_t)n_buckets, sizeof(HashNode *));
 
-   while (hmap->n_buckets--) {
-      HashNode *hnode = hmap->buckets[hmap->n_buckets];
-      while (hnode) {
-         HashNode *next = hnode->next;
-         Hash      hash = calc_hash(hnode->key, hnode->key_size, hmap->hash_fn, n_buckets);
-         hnode->next = buckets[hash];
-         buckets[hash] = hnode;
-         hnode = next;
+   while (map->n_buckets--) {
+      HashNode *node = map->buckets[map->n_buckets];
+      while (node) {
+         HashNode *next = node->next;
+         Hash      hash = calc_hash(node->key, node->key_size, map->hash_fn, n_buckets);
+         node->next = buckets[hash];
+         buckets[hash] = node;
+         node = next;
       }
    }
 
-   free(hmap->buckets);
-   hmap->n_buckets = n_buckets;
-   hmap->buckets = buckets;
+   free(map->buckets);
+   map->n_buckets = n_buckets;
+   map->buckets = buckets;
 }
 
-INLINE static HashNode *hashmap_find(HashMap *hmap, const void *key, size_t key_size, Hash hash)
+INLINE static HashNode *hashmap_find(HashMap *map, const void *key, size_t key_size, Hash hash)
 {
-   HashNode *hnode;
+   HashNode *node;
 
-   for (hnode = hmap->buckets[hash]; hnode; hnode = hnode->next) {
-      if (hashnode_eq(hnode, key, key_size))
+   for (node = map->buckets[hash]; node; node = node->next) {
+      if (hashnode_eq(node, key, key_size))
          break;
    }
 
-   return hnode;
+   return node;
 }
 
-void hashmap_init_with(HashMap *hmap, size_t key_size, HashFn hash_fn, Hash n_buckets)
+void hashmap_init_with(HashMap *map, size_t base_key_size, HashFn hash_fn, Hash n_buckets)
 {
-   hmap->n_buckets = roundup_pow2(n_buckets);
-   hmap->buckets = (HashNode **)calloc((size_t)hmap->n_buckets, sizeof(HashNode *));
-   hmap->n_items = 0;
-   hmap->key_size = key_size;
-   hmap->hash_fn = hash_fn ? hash_fn : default_hash_fn;
-   hmap->min_load = 0.25;
-   hmap->max_load = 0.75;
+   map->n_buckets = roundup_pow2(n_buckets);
+   map->buckets = (HashNode **)calloc((size_t)map->n_buckets, sizeof(HashNode *));
+   map->n_items = 0;
+   map->base_key_size = base_key_size;
+   map->hash_fn = hash_fn ? hash_fn : default_hash_fn;
+   map->min_load = 0.25;
+   map->max_load = 0.75;
 }
 
-void hashmap_init(HashMap *hmap, size_t key_size, HashFn hash_fn)
+void hashmap_init(HashMap *map, size_t key_size, HashFn hash_fn)
 {
-   hashmap_init_with(hmap, key_size, hash_fn, INITIAL_N_BUCKETS);
+   hashmap_init_with(map, key_size, hash_fn, INITIAL_N_BUCKETS);
 }
 
-void hashmap_insert(HashMap *hmap, const void *key, void *value)
+void hashmap_insert(HashMap *map, const void *key, void *value)
 {
-   HashEntry hentry;
+   HashEntry entry;
 
-   hashentry_init(&hentry, hmap, key);
-   hashentry_set(&hentry, value, NULL);
+   hashentry_init(&entry, map, key);
+   hashentry_set(&entry, value, NULL);
 }
 
-bool hashmap_remove(HashMap *hmap, const void *key, void **pvalue)
+bool hashmap_remove(HashMap *map, const void *key, void **pvalue)
 {
-   size_t    key_size = hashmap_key_size(hmap, key);
-   Hash      hash = calc_hash(key, key_size, hmap->hash_fn, hmap->n_buckets);
-   HashNode *hnode, *prev = NULL;
+   size_t    key_size = hashmap_key_size(map, key);
+   Hash      hash = calc_hash(key, key_size, map->hash_fn, map->n_buckets);
+   HashNode *node, *prev = NULL;
 
-   for (hnode = hmap->buckets[hash]; hnode; hnode = hnode->next) {
-      if (hashnode_eq(hnode, key, key_size))
+   for (node = map->buckets[hash]; node; node = node->next) {
+      if (hashnode_eq(node, key, key_size))
          break;
-      prev = hnode;
+      prev = node;
    }
 
-   if (!hnode)
+   if (!node)
       return false;
 
    if (prev)
-      prev->next = hnode->next;
+      prev->next = node->next;
    else
-      hmap->buckets[hash] = hnode->next;
-   hmap->n_items--;
+      map->buckets[hash] = node->next;
+   map->n_items--;
 
    if (pvalue)
-      *pvalue = hnode->value;
-   free(hnode);
+      *pvalue = node->value;
+   free(node);
 
    return true;
 }
 
-bool hashmap_get(HashMap *hmap, const void *key, void **pvalue)
+bool hashmap_get(HashMap *map, const void *key, void **pvalue)
 {
-   HashEntry hentry;
+   HashEntry entry;
 
-   if (!hashentry_init(&hentry, hmap, key))
+   if (!hashentry_init(&entry, map, key))
       return false;
 
-   hashentry_value(&hentry, pvalue);
+   hashentry_value(&entry, pvalue);
 
    return true;
 }
 
-bool hashmap_contains(const HashMap *hmap, const void *key)
+bool hashmap_contains(const HashMap *map, const void *key)
 {
-   HashEntry hentry;
-   return hashentry_init(&hentry, (HashMap *)hmap, key);
+   HashEntry entry;
+   return hashentry_init(&entry, (HashMap *)map, key);
 }
 
-void hashmap_clear(HashMap *hmap)
+void hashmap_clear(HashMap *map)
 {
    size_t i;
 
-   for (i = 0; i < hmap->n_buckets; i++) {
-      if (hmap->buckets[i]) {
-         free(hmap->buckets[i]);
-         hmap->buckets[i] = NULL;
+   for (i = 0; i < map->n_buckets; i++) {
+      if (map->buckets[i]) {
+         free(map->buckets[i]);
+         map->buckets[i] = NULL;
       }
    }
-   hmap->n_items = 0;
+   map->n_items = 0;
 }
 
-void hashmap_free(HashMap *hmap)
+void hashmap_free(HashMap *map)
 {
-   while (hmap->n_buckets--) {
-      if (hmap->buckets[hmap->n_buckets])
-         free(hmap->buckets[hmap->n_buckets]);
+   while (map->n_buckets--) {
+      if (map->buckets[map->n_buckets])
+         free(map->buckets[map->n_buckets]);
    }
-   free(hmap->buckets);
-   memset(hmap, 0, sizeof(*hmap));
+   free(map->buckets);
+   memset(map, 0, sizeof(*map));
 }
 
-void hashmap_rehash(HashMap *hmap)
+void hashmap_rehash(HashMap *map)
 {
-   float load_factor = hashmap_load_factor(hmap);
-   if (load_factor < hmap->min_load || load_factor > hmap->max_load)
-      hashmap_rehash_inner(hmap);
+   float load = hashmap_load(map);
+   if (load < map->min_load || load > map->max_load)
+      hashmap_rehash_inner(map);
 }
 
 bool hashmap_merge(HashMap *dst, HashMap *src)
 {
-   HashIter hiter;
+   HashIter iter;
 
-   if (dst->key_size != src->key_size)
+   if (dst->base_key_size != src->base_key_size)
       return false;
 
-   hashiter_init(src, &hiter);
-   while (hashiter_next(&hiter)) {
-      hashmap_insert(dst, hashiter_key(&hiter), hashiter_value(&hiter));
+   hashiter_init(src, &iter);
+   while (hashiter_next(&iter)) {
+      hashmap_insert(dst, hashiter_key(&iter), hashiter_value(&iter));
    }
    hashmap_free(src);
 
    return true;
 }
 
-bool hashmap_set_thresholds(HashMap *hmap, float min_load, float max_load)
+bool hashmap_set_thresholds(HashMap *map, float min_load, float max_load)
 {
    if (min_load <= 0. || max_load <= 0. || min_load > max_load)
       return false;
 
-   hmap->min_load = min_load;
-   hmap->max_load = max_load;
+   map->min_load = min_load;
+   map->max_load = max_load;
 
    return true;
 }
@@ -279,46 +279,46 @@ bool hashmap_set_thresholds(HashMap *hmap, float min_load, float max_load)
 //
 // MARK: HashEntry
 //
-bool hashentry_init(HashEntry *hentry, HashMap *hmap, const void *key)
+bool hashentry_init(HashEntry *entry, HashMap *map, const void *key)
 {
-   size_t key_size = hashmap_key_size(hmap, key);
-   Hash   hash = calc_hash(key, key_size, hmap->hash_fn, hmap->n_buckets);
+   size_t key_size = hashmap_key_size(map, key);
+   Hash   hash = calc_hash(key, key_size, map->hash_fn, map->n_buckets);
 
-   hentry->hmap = hmap;
-   hentry->hnode = hashmap_find(hmap, key, key_size, hash);
-   hentry->key = key;
-   hentry->key_size = key_size;
-   hentry->hash = hash;
+   entry->map = map;
+   entry->node = hashmap_find(map, key, key_size, hash);
+   entry->key = key;
+   entry->key_size = key_size;
+   entry->hash = hash;
 
-   return hentry->hnode != NULL;
+   return entry->node != NULL;
 }
 
-bool hashentry_set(HashEntry *hentry, void *value, void **pvalue)
+bool hashentry_set(HashEntry *entry, void *value, void **pvalue)
 {
-   HashMap  *hmap = hentry->hmap;
-   HashNode *hnode = hentry->hnode;
+   HashMap  *map = entry->map;
+   HashNode *node = entry->node;
    bool      found;
 
-   if (!hnode) {
+   if (!node) {
       found = false;
       if (pvalue)
          *pvalue = NULL;
 
-      hnode = hashnode_new(hentry->key, hentry->key_size, value);
-      hnode->next = hmap->buckets[hentry->hash];
-      hmap->buckets[hentry->hash] = hnode;
-      hmap->n_items++;
+      node = hashnode_new(entry->key, entry->key_size, value);
+      node->next = map->buckets[entry->hash];
+      map->buckets[entry->hash] = node;
+      map->n_items++;
 
-      hashmap_rehash(hmap);
+      hashmap_rehash(map);
    }
    else {
       found = true;
       if (pvalue)
-         *pvalue = hnode->value;
-      hnode->value = value;
+         *pvalue = node->value;
+      node->value = value;
    }
 
-   hentry->hnode = hnode;
+   entry->node = node;
 
    return found;
 }
@@ -326,25 +326,25 @@ bool hashentry_set(HashEntry *hentry, void *value, void **pvalue)
 //
 // MARK: HashIter
 //
-void hashiter_init(const HashMap *hmap, HashIter *hiter)
+void hashiter_init(const HashMap *map, HashIter *iter)
 {
-   hiter->hmap = hmap;
-   hiter->hnode = NULL;
-   hiter->hash = (Hash)-1;
+   iter->map = map;
+   iter->node = NULL;
+   iter->hash = (Hash)-1;
 }
 
-bool hashiter_next(HashIter *hiter)
+bool hashiter_next(HashIter *iter)
 {
-   const HashMap *hmap = hiter->hmap;
+   const HashMap *map = iter->map;
 
-   if (hiter->hnode)
-      hiter->hnode = hiter->hnode->next;
+   if (iter->node)
+      iter->node = iter->node->next;
 
-   while (!hiter->hnode) {
-      if (++hiter->hash >= hmap->n_buckets)
+   while (!iter->node) {
+      if (++iter->hash >= map->n_buckets)
          return false;
 
-      hiter->hnode = hmap->buckets[hiter->hash];
+      iter->node = map->buckets[iter->hash];
    }
 
    return true;

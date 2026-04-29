@@ -13,154 +13,154 @@ static Hash int_hash(const void *key, size_t size)
 
 static void test_insert_get_contains(void)
 {
-   HashMap hm;
-   hashmap_init(&hm, sizeof(int), int_hash);
+   HashMap map;
+   hashmap_init(&map, sizeof(int), int_hash);
 
    int   k = 42;
    int   v = 1337;
    void *out = NULL;
 
-   assert(!hashmap_contains(&hm, &k));
+   assert(!hashmap_contains(&map, &k));
 
-   hashmap_insert(&hm, &k, &v);
+   hashmap_insert(&map, &k, &v);
 
-   assert(hashmap_contains(&hm, &k));
-   assert(hashmap_get(&hm, &k, &out));
+   assert(hashmap_contains(&map, &k));
+   assert(hashmap_get(&map, &k, &out));
    assert(out == &v);
 
-   hashmap_free(&hm);
+   hashmap_free(&map);
 
    printf("%s passed\n", __func__);
 }
 
 static void test_overwrite_value(void)
 {
-   HashMap hm;
-   hashmap_init(&hm, sizeof(int), int_hash);
+   HashMap map;
+   hashmap_init(&map, sizeof(int), int_hash);
 
    int   k = 1;
    int   v1 = 10;
    int   v2 = 20;
    void *out = NULL;
 
-   hashmap_insert(&hm, &k, &v1);
-   hashmap_insert(&hm, &k, &v2);
+   hashmap_insert(&map, &k, &v1);
+   hashmap_insert(&map, &k, &v2);
 
-   assert(hashmap_get(&hm, &k, &out));
+   assert(hashmap_get(&map, &k, &out));
    assert(out == &v2);
 
-   hashmap_free(&hm);
+   hashmap_free(&map);
 
    printf("%s passed\n", __func__);
 }
 
 static void test_remove(void)
 {
-   HashMap hm;
-   hashmap_init(&hm, sizeof(int), int_hash);
+   HashMap map;
+   hashmap_init(&map, sizeof(int), int_hash);
 
    int   k = 5;
    int   v = 99;
    void *out = NULL;
 
-   hashmap_insert(&hm, &k, &v);
+   hashmap_insert(&map, &k, &v);
 
-   assert(hashmap_remove(&hm, &k, &out));
+   assert(hashmap_remove(&map, &k, &out));
    assert(out == &v);
-   assert(!hashmap_contains(&hm, &k));
-   assert(!hashmap_remove(&hm, &k, NULL));
+   assert(!hashmap_contains(&map, &k));
+   assert(!hashmap_remove(&map, &k, NULL));
 
-   hashmap_free(&hm);
+   hashmap_free(&map);
 
    printf("%s passed\n", __func__);
 }
 
 static void test_clear(void)
 {
-   HashMap hm;
-   hashmap_init(&hm, sizeof(int), int_hash);
+   HashMap map;
+   hashmap_init(&map, sizeof(int), int_hash);
 
    for (int i = 0; i < 100; i++)
-      hashmap_insert(&hm, &i, &i);
+      hashmap_insert(&map, &i, &i);
 
-   assert(hashmap_len(&hm));
+   assert(hashmap_len(&map));
 
-   hashmap_clear(&hm);
+   hashmap_clear(&map);
 
-   assert(!hashmap_len(&hm));
+   assert(!hashmap_len(&map));
 
-   hashmap_free(&hm);
+   hashmap_free(&map);
 
    printf("%s passed\n", __func__);
 }
 
 static void test_string_keys(void)
 {
-   HashMap hm;
-   hashmap_init(&hm, KEY_SIZE_STR, NULL);
+   HashMap map;
+   hashmap_init(&map, KEY_SIZE_STR, NULL);
 
-   hashmap_insert(&hm, "hello", "world");
-   hashmap_insert(&hm, "foo", "bar");
+   hashmap_insert(&map, "hello", "world");
+   hashmap_insert(&map, "foo", "bar");
 
    void *out = NULL;
-   assert(hashmap_get(&hm, "hello", &out));
+   assert(hashmap_get(&map, "hello", &out));
    assert(strcmp(out, "world") == 0);
 
-   assert(hashmap_contains(&hm, "foo"));
-   assert(!hashmap_contains(&hm, "baz"));
+   assert(hashmap_contains(&map, "foo"));
+   assert(!hashmap_contains(&map, "baz"));
 
-   hashmap_free(&hm);
+   hashmap_free(&map);
 
    printf("%s passed\n", __func__);
 }
 
 static void test_hashentry(void)
 {
-   HashMap hm;
-   hashmap_init(&hm, sizeof(int), int_hash);
+   HashMap map;
+   hashmap_init(&map, sizeof(int), int_hash);
 
    int k = 7;
    int v = 70;
-   hashmap_insert(&hm, &k, &v);
+   hashmap_insert(&map, &k, &v);
 
-   HashEntry he;
-   assert(hashentry_init(&he, &hm, &k));
-   assert(hashentry_is_occupied(&he));
+   HashEntry entry;
+   assert(hashentry_init(&entry, &map, &k));
+   assert(hashentry_is_occupied(&entry));
 
    void *out = NULL;
-   assert(hashentry_value(&he, &out));
+   assert(hashentry_value(&entry, &out));
    assert(out == &v);
 
    int v2 = 71;
    out = NULL;
-   assert(hashentry_set(&he, &v2, &out));
+   assert(hashentry_set(&entry, &v2, &out));
    assert(out == &v);
 
-   assert(hashmap_get(&hm, &k, &out));
+   assert(hashmap_get(&map, &k, &out));
    assert(out == &v2);
 
-   hashmap_free(&hm);
+   hashmap_free(&map);
 
    printf("%s passed\n", __func__);
 }
 
 static void test_iteration(void)
 {
-   HashMap hm;
-   hashmap_init(&hm, sizeof(int), int_hash);
+   HashMap map;
+   hashmap_init(&map, sizeof(int), int_hash);
 
    int keys[5] = {1, 2, 3, 4, 5};
 
    for (int i = 0; i < 5; i++)
-      hashmap_insert(&hm, &keys[i], &keys[i]);
+      hashmap_insert(&map, &keys[i], &keys[i]);
 
    bool seen[5] = {false};
 
-   HashIter it;
-   hashiter_init(&hm, &it);
+   HashIter iter;
+   hashiter_init(&map, &iter);
 
-   while (hashiter_next(&it)) {
-      int k = *(int *)hashiter_key(&it);
+   while (hashiter_next(&iter)) {
+      int k = *(int *)hashiter_key(&iter);
       assert(k >= 1 && k <= 5);
       seen[k - 1] = true;
    }
@@ -168,7 +168,7 @@ static void test_iteration(void)
    for (int i = 0; i < 5; i++)
       assert(seen[i]);
 
-   hashmap_free(&hm);
+   hashmap_free(&map);
 
    printf("%s passed\n", __func__);
 }
