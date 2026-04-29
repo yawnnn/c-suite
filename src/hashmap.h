@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <assert.h>
 
 #ifdef _MSC_VER
    #define INLINE __inline
@@ -22,15 +23,15 @@
    #define INLINE
 #endif
 
-#define KEY_SIZE_STR ((size_t)-1) /**< marker for keys that are variable length c-strings */
+#define HMAP_KEY_SIZE_STR       ((size_t)-1) /**< marker for keys that are variable length c-strings */
 
 typedef uint32_t Hash; /**< type of the hash */
 typedef Hash (*HashFn)(const void *key, size_t size); /**< custom hash function pointer */
 
 typedef struct HashNode {
    const void      *key;
-   size_t           key_size; /**< needed when the hashmap's key_size is KEY_SIZE_STR */
-   void            *value;
+   size_t           key_size; /**< real key size, relevant when base_key_size is HMAP_KEY_STR */
+   void            *val;
    struct HashNode *next;
 } HashNode;
 
@@ -43,10 +44,8 @@ typedef struct HashMap {
    HashNode **buckets;
    Hash       n_buckets;
    size_t     n_items;
-   size_t     base_key_size;
+   size_t     base_key_size; /**< size of the keys if its fixed */
    HashFn     hash_fn;
-   float      min_load;
-   float      max_load;
 } HashMap;
 
 /**
@@ -79,53 +78,50 @@ typedef struct HashIter {
 
 /**
  * @brief initialize hashmap specifiying the initial number of buckets
+ * @note this will allocate some buckets right away
+ *       that's to avoid checking for NULL at every lookup and to avoid rehashing often on early insertions
  * 
  * @param[out] map hashmap
- * @param[in] base_key_size size of the keys. if they are variable c-strings, pass KEY_SIZE_STR
+ * @param[in] base_key_size size of the keys. if they are variable c-strings, pass HMAP_KEY_STR
  * @param[in] hash_fn if != NULL, custom hash function
- * @param[in] n_buckets minimum number of initial buckets
- */
-void hashmap_init_with(HashMap *map, size_t base_key_size, HashFn hash_fn, Hash n_buckets);
-
-/**
- * @brief initialize hashmap
- * 
- * see @p hashmap_init_with for params
  */
 void hashmap_init(HashMap *map, size_t base_key_size, HashFn hash_fn);
-
-/**
- * @brief insert key+value pair in the hashmap
- * 
- * @param[in,out] map hashmap
- * @param[in] key key to insert
- * @param[in] value value to insert
- */
-void hashmap_insert(HashMap *map, const void *key, void *value);
 
 /**
  * @brief remove key+value pair from the hashmap
  * 
  * @param[in,out] map hashmap
  * @param[in] key key to remove
- * @param[out] pvalue if != NULL, on success it points to the removed value
+ * @param[out] pval if != NULL, on success it points to the removed value
  * 
  * @return if @p key was found
  */
-bool hashmap_remove(HashMap *map, const void *key, void **pvalue);
+bool hashmap_remove(HashMap *map, const void *key, void **pval);
 
 /**
  * @brief get value corresponding to key
  * 
  * @param[in] map hashmap
  * @param[in] key key to find
- * @param[out] pvalue on success, contains the pointer to the value
+ * @param[out] pval on success, contains the pointer to the value
  * 
- * @p pvalue is not set on failure, so that can be used as a default value by the caller
+ * @p pval is not set on failure, so that can be used as a default value by the caller
  * 
  * @return if @p key was found
  */
-bool hashmap_get(HashMap *map, const void *key, void **pvalue);
+bool hashmap_get(HashMap *map, const void *key, void **pval);
+
+/**
+ * @brief update/insert the value of the entry
+ * 
+ * @param[in,out] map
+ * @param[in] key key to set
+ * @param[in] val new value
+ * @param[out] pval if != NULL, on success it points to the previous value
+ * 
+ * @return if the entry was occupied
+ */
+bool hashmap_set(HashMap *map, const void *key, void *val, void **pval);
 
 /**
  * @brief check if @p key exists in the hashmap
@@ -136,13 +132,6 @@ bool hashmap_get(HashMap *map, const void *key, void **pvalue);
  * @return if @p key was found
  */
 bool hashmap_contains(const HashMap *map, const void *key);
-
-/**
- * @brief remove all elements from the hashmap, but don't free underlying buckets
- * 
- * @param[in,out] map hashmap
- */
-void hashmap_clear(HashMap *map);
 
 /**
  * @brief free the hashmap
@@ -161,34 +150,11 @@ void hashmap_free(HashMap *map);
 void hashmap_rehash(HashMap *map);
 
 /**
- * @brief merge one hashmap into the other
- * 
- * @param[in,out] dst destination hashmap
- * @param[in,out] src source hashmap. it will be consumed on exit
- * 
- * @return if key sizes are the same, otherwise maps aren't compatible and no work was done
- */
-bool hashmap_merge(HashMap *dst, HashMap *src);
-
-/**
- * @brief set thresholds for rehashing
- * 
- * @param[in,out] map hashmap
- * @param[in] min_load minimum load. affects only manual rehashing
- * @param[in] max_load maximum load
- * 
- * default is @p min_load = 0.25 and @p max_load = 0.75
- * 
- * @return if the values are valid
- */
-bool hashmap_set_thresholds(HashMap *map, float min_load, float max_load);
-
-/**
  * @brief number of elements in the hashmap
  */
-INLINE static size_t hashmap_len(const HashMap *map)
+INLINE static size_t hashmap_len(const HashMap *hmap)
 {
-   return map->n_items;
+   return hmap->n_items;
 }
 
 /**
@@ -208,12 +174,12 @@ bool hashentry_init(HashEntry *entry, HashMap *map, const void *key);
  * @brief update/insert the value of the entry
  * 
  * @param[in,out] entry
- * @param[in] value new value
- * @param[out] pvalue if != NULL, on success it points to the previous value
+ * @param[in] val new value
+ * @param[out] pval if != NULL, on success it points to the previous value
  * 
  * @return if the entry was occupied
  */
-bool hashentry_set(HashEntry *entry, void *value, void **pvalue);
+bool hashentry_set(HashEntry *entry, void *val, void **pval);
 
 /**
  * @brief key corresponding to the entry
@@ -237,43 +203,38 @@ INLINE static bool hashentry_key(const HashEntry *entry, const void **pkey)
  * @brief value corresponding to the entry
  * 
  * @param[in] entry entry
- * @param[out] pvalue on success, it points to the value
+ * @param[out] pval on success, it points to the value
  * 
  * @return if the entry is occupied
  */
-INLINE static bool hashentry_value(const HashEntry *entry, void **pvalue)
+INLINE static bool hashentry_val(const HashEntry *entry, void **pval)
 {
    if (!entry->node)
       return false;
 
-   *pvalue = entry->node->value;
+   *pval = entry->node->val;
 
    return true;
 }
 
-/**
- * @brief if the key was found on init
- */
-INLINE static bool hashentry_is_occupied(const HashEntry *entry)
-{
-   return entry->node != NULL;
-}
+#define hashentry_is_occupied(entry) \
+   ((entry)->node != NULL) /**< if entry corresponds to a key in the hashmap */
 
-/**
- * @brief if the key was not found on init
- */
-INLINE static bool hashentry_is_vacant(const HashEntry *entry)
-{
-   return entry->node == NULL;
-}
+#define hashentry_is_vacant(entry) \
+   ((entry)->node == NULL) /**< if entry doesn't corresponds to a key in the hashmap */
 
 /**
  * @brief initialize iterator
  * 
- * @param[in] map
  * @param[out] iter
+ * @param[in] map
  */
-void hashiter_init(const HashMap *map, HashIter *iter);
+INLINE static void hashiter_init(HashIter *iter, const HashMap *map)
+{
+   iter->map = map;
+   iter->node = NULL;
+   iter->hash = (Hash)-1;
+}
 
 /**
  * @brief get next element of the hashmap
@@ -286,22 +247,22 @@ bool hashiter_next(HashIter *iter);
 
 /**
  * @brief return pointer to the corresponding key
- * 
  * @note valid only after a successful hashiter_next
  */
 INLINE static const void *hashiter_key(const HashIter *iter)
 {
+   assert(iter->node);
    return iter->node->key;
 }
 
 /**
  * @brief return pointer to the corresponding value
- * 
  * @note valid only after a successful hashiter_next
  */
-INLINE static void *hashiter_value(const HashIter *iter)
+INLINE static void *hashiter_val(const HashIter *iter)
 {
-   return (void *)iter->node->value;
+   assert(iter->node);
+   return (void *)iter->node->val;
 }
 
 #endif /* __HASHMAP_H__ */

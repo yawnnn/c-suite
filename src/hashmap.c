@@ -11,23 +11,18 @@
 
 #include "hashmap.h"
 
-/**
- * @brief initial n_buckets
- */
-#define INITIAL_N_BUCKETS 8
+#define MIN_LOAD           0.25
+#define MAX_LOAD           0.75
+#define HMAP_START_BUCKETS 64 /**< initial number of buckets */
 
 /**
  * @brief Perl's hash function
  */
 static Hash default_hash_fn(const void *key, size_t size)
 {
-   register const uint8_t *data;
-   register size_t         i;
-   register Hash           hash;
-
-   data = (const uint8_t *)key;
-   i = size;
-   hash = 0;  // or seed
+   register const uint8_t *data = (const uint8_t *)key;
+   register size_t         i = size;
+   register Hash           hash = 0;  // or seed
 
    while (i--) {
       hash += *data++;
@@ -49,25 +44,44 @@ INLINE static Hash calc_hash(const void *key, size_t key_size, HashFn hash_fn, H
    return hash & (n_buckets - 1);
 }
 
+/**
+ * @brief round up to nearest power of two
+ */
+INLINE static Hash roundup_pow2(Hash num)
+{
+   size_t shift;
+
+   if (!num)
+      return 1;
+
+   num--;
+   for (shift = 1; shift < sizeof(num) * 8; shift <<= 1) {
+      num |= num >> shift;
+   }
+   num++;
+
+   return num;
+}
+
 //
 // MARK: HashNode
 //
-INLINE static bool hashnode_eq(HashNode *node, const void *key, size_t real_size)
+
+INLINE static bool hashnode_eq(HashNode *node, const void *key, size_t key_size)
 {
-   if (node->key_size != real_size)
+   if (node->key_size != key_size)
       return false;
-   if (node->key == key)
-      return true;
    return !memcmp(node->key, key, node->key_size);
 }
 
-INLINE static HashNode *hashnode_new(const void *key, size_t key_size, void *value)
+INLINE static HashNode *hashnode_new(const void *key, size_t key_size, void *val)
 {
-   HashNode *node = (HashNode *)malloc(sizeof(HashNode));
+   HashNode *node;
 
+   node = (HashNode *)malloc(sizeof(HashNode));
    node->key = key;
    node->key_size = key_size;
-   node->value = value;
+   node->val = val;
    node->next = NULL;
 
    return node;
@@ -77,114 +91,59 @@ INLINE static HashNode *hashnode_new(const void *key, size_t key_size, void *val
 // MARK: HashMap
 //
 
-/**
- * @brief round up to nearest power of two
- */
-INLINE static Hash roundup_pow2(Hash num)
+INLINE static size_t hashmap_real_key_size(HashMap *map, const void *key)
 {
-   uint8_t i;
-
-   if (!num)
-      return 1;
-
-   // a quick test shows that -O2 unrolls the loop on sizeof(num) == 4, but not 8. -O3 does it in both cases
-   num--;
-   for (i = 0; i < sizeof(num); i++) {
-      num |= num >> (1 << i);
-   }
-   num++;
-
-   return num;
-}
-
-INLINE static size_t hashmap_key_size(HashMap *map, const void *key)
-{
-   if (map->base_key_size == KEY_SIZE_STR)
+   if (map->base_key_size == HMAP_KEY_SIZE_STR)
       return key ? strlen((const char *)key) : 0;
    return map->base_key_size;
 }
 
-INLINE static float hashmap_load(HashMap *map)
+INLINE static HashNode *
+hashmap_find(HashMap *map, const void *key, size_t base_key_size, Hash hash, HashNode **pprev)
 {
-   return (float)map->n_items / (float)map->n_buckets;
-}
-
-static void hashmap_rehash_inner(HashMap *map)
-{
-   HashNode **buckets;
-   Hash       n_buckets;
-
-   n_buckets = (Hash)((float)(map->n_items * 2) / (map->min_load + map->max_load));
-   n_buckets = roundup_pow2(n_buckets);
-   if (n_buckets == map->n_buckets)
-      return;
-
-   buckets = (HashNode **)calloc((size_t)n_buckets, sizeof(HashNode *));
-
-   while (map->n_buckets--) {
-      HashNode *node = map->buckets[map->n_buckets];
-      while (node) {
-         HashNode *next = node->next;
-         Hash      hash = calc_hash(node->key, node->key_size, map->hash_fn, n_buckets);
-         node->next = buckets[hash];
-         buckets[hash] = node;
-         node = next;
-      }
-   }
-
-   free(map->buckets);
-   map->n_buckets = n_buckets;
-   map->buckets = buckets;
-}
-
-INLINE static HashNode *hashmap_find(HashMap *map, const void *key, size_t key_size, Hash hash)
-{
-   HashNode *node;
-
-   for (node = map->buckets[hash]; node; node = node->next) {
-      if (hashnode_eq(node, key, key_size))
-         break;
-   }
-
-   return node;
-}
-
-void hashmap_init_with(HashMap *map, size_t base_key_size, HashFn hash_fn, Hash n_buckets)
-{
-   map->n_buckets = roundup_pow2(n_buckets);
-   map->buckets = (HashNode **)calloc((size_t)map->n_buckets, sizeof(HashNode *));
-   map->n_items = 0;
-   map->base_key_size = base_key_size;
-   map->hash_fn = hash_fn ? hash_fn : default_hash_fn;
-   map->min_load = 0.25;
-   map->max_load = 0.75;
-}
-
-void hashmap_init(HashMap *map, size_t key_size, HashFn hash_fn)
-{
-   hashmap_init_with(map, key_size, hash_fn, INITIAL_N_BUCKETS);
-}
-
-void hashmap_insert(HashMap *map, const void *key, void *value)
-{
-   HashEntry entry;
-
-   hashentry_init(&entry, map, key);
-   hashentry_set(&entry, value, NULL);
-}
-
-bool hashmap_remove(HashMap *map, const void *key, void **pvalue)
-{
-   size_t    key_size = hashmap_key_size(map, key);
-   Hash      hash = calc_hash(key, key_size, map->hash_fn, map->n_buckets);
    HashNode *node, *prev = NULL;
 
    for (node = map->buckets[hash]; node; node = node->next) {
-      if (hashnode_eq(node, key, key_size))
+      if (hashnode_eq(node, key, base_key_size))
          break;
       prev = node;
    }
 
+   if (pprev)
+      *pprev = prev;
+
+   return node;
+}
+
+static HashNode *
+hashmap_insert(HashMap *map, const void *key, size_t key_size, Hash hash, void *val)
+{
+   HashNode *node = hashnode_new(key, key_size, val);
+
+   node->next = map->buckets[hash];
+   map->buckets[hash] = node;
+   map->n_items++;
+   hashmap_rehash(map);
+
+   return node;
+}
+
+void hashmap_init(HashMap *map, size_t base_key_size, HashFn hash_fn)
+{
+   map->n_buckets = HMAP_START_BUCKETS;
+   map->buckets = (HashNode **)calloc((size_t)map->n_buckets, sizeof(HashNode *));
+   map->n_items = 0;
+   map->base_key_size = base_key_size;
+   map->hash_fn = hash_fn ? hash_fn : default_hash_fn;
+}
+
+bool hashmap_remove(HashMap *map, const void *key, void **pval)
+{
+   size_t    key_size = hashmap_real_key_size(map, key);
+   Hash      hash = calc_hash(key, key_size, map->hash_fn, map->n_buckets);
+   HashNode *node, *prev;
+
+   node = hashmap_find(map, key, key_size, hash, &prev);
    if (!node)
       return false;
 
@@ -194,42 +153,39 @@ bool hashmap_remove(HashMap *map, const void *key, void **pvalue)
       map->buckets[hash] = node->next;
    map->n_items--;
 
-   if (pvalue)
-      *pvalue = node->value;
+   if (pval)
+      *pval = node->val;
    free(node);
 
    return true;
 }
 
-bool hashmap_get(HashMap *map, const void *key, void **pvalue)
+bool hashmap_get(HashMap *map, const void *key, void **pval)
 {
    HashEntry entry;
 
    if (!hashentry_init(&entry, map, key))
       return false;
 
-   hashentry_value(&entry, pvalue);
+   hashentry_val(&entry, pval);
 
    return true;
+}
+
+bool hashmap_set(HashMap *map, const void *key, void *val, void **pval)
+{
+   HashEntry entry;
+
+   hashentry_init(&entry, map, key);
+
+   return hashentry_set(&entry, val, pval);
 }
 
 bool hashmap_contains(const HashMap *map, const void *key)
 {
    HashEntry entry;
+
    return hashentry_init(&entry, (HashMap *)map, key);
-}
-
-void hashmap_clear(HashMap *map)
-{
-   size_t i;
-
-   for (i = 0; i < map->n_buckets; i++) {
-      if (map->buckets[i]) {
-         free(map->buckets[i]);
-         map->buckets[i] = NULL;
-      }
-   }
-   map->n_items = 0;
 }
 
 void hashmap_free(HashMap *map)
@@ -244,36 +200,36 @@ void hashmap_free(HashMap *map)
 
 void hashmap_rehash(HashMap *map)
 {
-   float load = hashmap_load(map);
-   if (load < map->min_load || load > map->max_load)
-      hashmap_rehash_inner(map);
-}
+   float load = (float)map->n_items / (float)map->n_buckets;
 
-bool hashmap_merge(HashMap *dst, HashMap *src)
-{
-   HashIter iter;
+   if (load < MIN_LOAD || load > MAX_LOAD) {
+      HashNode **buckets;
+      Hash       n_buckets;
 
-   if (dst->base_key_size != src->base_key_size)
-      return false;
+      n_buckets = (Hash)((float)(map->n_items * 2) / (MIN_LOAD + MAX_LOAD));
+      n_buckets = roundup_pow2(n_buckets);
+      if (n_buckets == map->n_buckets)
+         return;
 
-   hashiter_init(src, &iter);
-   while (hashiter_next(&iter)) {
-      hashmap_insert(dst, hashiter_key(&iter), hashiter_value(&iter));
+      buckets = (HashNode **)calloc((size_t)n_buckets, sizeof(HashNode *));
+
+      while (map->n_buckets--) {
+         HashNode *node = map->buckets[map->n_buckets];
+
+         while (node) {
+            HashNode *next = node->next;
+            Hash      hash = calc_hash(node->key, node->key_size, map->hash_fn, n_buckets);
+
+            node->next = buckets[hash];
+            buckets[hash] = node;
+            node = next;
+         }
+      }
+
+      free(map->buckets);
+      map->n_buckets = n_buckets;
+      map->buckets = buckets;
    }
-   hashmap_free(src);
-
-   return true;
-}
-
-bool hashmap_set_thresholds(HashMap *map, float min_load, float max_load)
-{
-   if (min_load <= 0. || max_load <= 0. || min_load > max_load)
-      return false;
-
-   map->min_load = min_load;
-   map->max_load = max_load;
-
-   return true;
 }
 
 //
@@ -281,11 +237,11 @@ bool hashmap_set_thresholds(HashMap *map, float min_load, float max_load)
 //
 bool hashentry_init(HashEntry *entry, HashMap *map, const void *key)
 {
-   size_t key_size = hashmap_key_size(map, key);
+   size_t key_size = hashmap_real_key_size(map, key);
    Hash   hash = calc_hash(key, key_size, map->hash_fn, map->n_buckets);
 
    entry->map = map;
-   entry->node = hashmap_find(map, key, key_size, hash);
+   entry->node = hashmap_find(map, key, key_size, hash, NULL);
    entry->key = key;
    entry->key_size = key_size;
    entry->hash = hash;
@@ -293,32 +249,23 @@ bool hashentry_init(HashEntry *entry, HashMap *map, const void *key)
    return entry->node != NULL;
 }
 
-bool hashentry_set(HashEntry *entry, void *value, void **pvalue)
+bool hashentry_set(HashEntry *entry, void *val, void **pval)
 {
-   HashMap  *map = entry->map;
-   HashNode *node = entry->node;
-   bool      found;
+   HashMap *map = entry->map;
+   bool     found;
 
-   if (!node) {
-      found = false;
-      if (pvalue)
-         *pvalue = NULL;
-
-      node = hashnode_new(entry->key, entry->key_size, value);
-      node->next = map->buckets[entry->hash];
-      map->buckets[entry->hash] = node;
-      map->n_items++;
-
-      hashmap_rehash(map);
+   if (entry->node) {
+      found = true;
+      if (pval)
+         *pval = entry->node->val;
+      entry->node->val = val;
    }
    else {
-      found = true;
-      if (pvalue)
-         *pvalue = node->value;
-      node->value = value;
+      found = false;
+      if (pval)
+         *pval = NULL;
+      entry->node = hashmap_insert(map, entry->key, entry->key_size, entry->hash, val);
    }
-
-   entry->node = node;
 
    return found;
 }
@@ -326,12 +273,6 @@ bool hashentry_set(HashEntry *entry, void *value, void **pvalue)
 //
 // MARK: HashIter
 //
-void hashiter_init(const HashMap *map, HashIter *iter)
-{
-   iter->map = map;
-   iter->node = NULL;
-   iter->hash = (Hash)-1;
-}
 
 bool hashiter_next(HashIter *iter)
 {
@@ -349,9 +290,3 @@ bool hashiter_next(HashIter *iter)
 
    return true;
 }
-
-/**
- * TODO:
- * - optimize hashmap_merge
- * - is hashmap_clear necessary?
- */
