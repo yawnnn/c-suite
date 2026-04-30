@@ -106,7 +106,7 @@ static void test_hashentry(void)
 
    HashEntry entry;
    assert(hashentry_init(&entry, &map, &k));
-   assert(hashentry_is_occupied(&entry));
+   assert(hashentry_found(&entry));
 
    void *out = NULL;
    assert(hashentry_val(&entry, &out));

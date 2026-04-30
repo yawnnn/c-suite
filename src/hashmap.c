@@ -137,57 +137,6 @@ void hashmap_init(HashMap *map, size_t base_key_size, HashFn hash_fn)
    map->hash_fn = hash_fn ? hash_fn : default_hash_fn;
 }
 
-bool hashmap_remove(HashMap *map, const void *key, void **pval)
-{
-   size_t    key_size = hashmap_real_key_size(map, key);
-   Hash      hash = calc_hash(key, key_size, map->hash_fn, map->n_buckets);
-   HashNode *node, *prev;
-
-   node = hashmap_find(map, key, key_size, hash, &prev);
-   if (!node)
-      return false;
-
-   if (prev)
-      prev->next = node->next;
-   else
-      map->buckets[hash] = node->next;
-   map->n_items--;
-
-   if (pval)
-      *pval = node->val;
-   free(node);
-
-   return true;
-}
-
-bool hashmap_get(HashMap *map, const void *key, void **pval)
-{
-   HashEntry entry;
-
-   if (!hashentry_init(&entry, map, key))
-      return false;
-
-   hashentry_val(&entry, pval);
-
-   return true;
-}
-
-bool hashmap_set(HashMap *map, const void *key, void *val, void **pval)
-{
-   HashEntry entry;
-
-   hashentry_init(&entry, map, key);
-
-   return hashentry_set(&entry, val, pval);
-}
-
-bool hashmap_contains(const HashMap *map, const void *key)
-{
-   HashEntry entry;
-
-   return hashentry_init(&entry, (HashMap *)map, key);
-}
-
 void hashmap_free(HashMap *map)
 {
    while (map->n_buckets--) {
@@ -268,6 +217,28 @@ bool hashentry_set(HashEntry *entry, void *val, void **pval)
    }
 
    return found;
+}
+
+bool hashentry_remove(HashEntry *entry, void **pval)
+{
+   HashMap  *map = entry->map;
+   HashNode *node = entry->node, *prev = entry->prev;
+
+   if (!node)
+      return false;
+
+   if (prev)
+      prev->next = node->next;
+   else
+      map->buckets[entry->hash] = node->next;
+   map->n_items--;
+
+   if (pval)
+      *pval = node->val;
+   free(node);
+   entry->node = entry->prev = NULL;
+
+   return true;
 }
 
 //
