@@ -23,7 +23,7 @@
  * @param[in,out] vs Vstr
  * @param[in] nbytes number of bytes required
  */
-INLINE static void vstr_alloc(Vstr *vs, size_t nbytes)
+INLINE static void vstr_alloc(VStr *vs, size_t nbytes)
 {
    vs->ptr = malloc(nbytes);
    vs->cap = nbytes;
@@ -35,7 +35,7 @@ INLINE static void vstr_alloc(Vstr *vs, size_t nbytes)
  * @param[in,out] vs Vstr
  * @param[in] nbytes number of bytes required
  */
-INLINE static void vstr_realloc(Vstr *vs, size_t nbytes)
+INLINE static void vstr_realloc(VStr *vs, size_t nbytes)
 {
    vs->ptr = realloc(vs->ptr, nbytes);
    vs->cap = nbytes;
@@ -50,7 +50,7 @@ INLINE static void vstr_realloc(Vstr *vs, size_t nbytes)
  * @param[in,out] vs Vstr
  * @param[in] nbytes number of bytes required
  */
-static void vstr_resize(Vstr *vs, size_t nbytes)
+static void vstr_resize(VStr *vs, size_t nbytes)
 {
    if (vs->cap) {
       if (nbytes < vs->cap || nbytes > vs->cap * GROWTH_FACTOR)
@@ -70,7 +70,7 @@ static void vstr_resize(Vstr *vs, size_t nbytes)
  * @param[in] src source string
  * @param[in] nbyte number of bytes of @p src
  */
-INLINE static void vstr_append_unchecked(Vstr *dst, size_t pos, const char *src, size_t nbyte)
+INLINE static void vstr_append_unchecked(VStr *dst, size_t pos, const char *src, size_t nbyte)
 {
    size_t new_len = pos + nbyte;
 
@@ -83,7 +83,7 @@ INLINE static void vstr_append_unchecked(Vstr *dst, size_t pos, const char *src,
 /**
  * @brief sprintf on Vstr, internal impl that uses va_list
  */
-INLINE static int vstr_vsprintf(Vstr *dst, size_t pos, const char *format, va_list args)
+INLINE static int vstr_vsprintf(VStr *dst, size_t pos, const char *format, va_list args)
 {
    if (pos > dst->len)
       return -2;
@@ -102,32 +102,32 @@ INLINE static int vstr_vsprintf(Vstr *dst, size_t pos, const char *format, va_li
    return n;
 }
 
-void vstr_new(Vstr *vs)
+void vstr_new(VStr *vs)
 {
    vs->cap = vs->len = 0;
 }
 
-void vstr_new_with(Vstr *vs, size_t len)
+void vstr_new_with(VStr *vs, size_t len)
 {
    vstr_new(vs);
    vstr_reserve(vs, len);
    vstr_cpy(vs, "");
 }
 
-void vstr_from(Vstr *vs, const char *src)
+void vstr_from(VStr *vs, const char *src)
 {
    vstr_new(vs);
    vstr_cpy(vs, src);
 }
 
-void vstr_free(Vstr *vs)
+void vstr_free(VStr *vs)
 {
    if (vs->cap)
       free(vs->ptr);
    vs->cap = vs->len = 0;
 }
 
-void vstr_truncate(Vstr *vs, size_t new_len)
+void vstr_truncate(VStr *vs, size_t new_len)
 {
    if (new_len < vs->len) {
       vs->len = new_len;
@@ -135,19 +135,19 @@ void vstr_truncate(Vstr *vs, size_t new_len)
    }
 }
 
-void vstr_reserve(Vstr *vs, size_t len)
+void vstr_reserve(VStr *vs, size_t len)
 {
    if (len + 1 > vs->cap)
       vstr_resize(vs, len + 1);
 }
 
-void vstr_shrink_to_fit(Vstr *vs)
+void vstr_shrink_to_fit(VStr *vs)
 {
    if (vs->cap > vs->len + 1)
       vstr_resize(vs, vs->len + 1);
 }
 
-bool vstr_insert(Vstr *dst, size_t pos, const char *src, size_t nbyte)
+bool vstr_insert(VStr *dst, size_t pos, const char *src, size_t nbyte)
 {
    if (pos > dst->len)
       return false;
@@ -163,14 +163,14 @@ bool vstr_insert(Vstr *dst, size_t pos, const char *src, size_t nbyte)
    return true;
 }
 
-char *vstr_cpy(Vstr *dst, const char *src)
+char *vstr_cpy(VStr *dst, const char *src)
 {
    vstr_append_unchecked(dst, 0, src, strlen(src));
 
    return dst->ptr;
 }
 
-char *vstr_ncpy(Vstr *dst, const char *src, size_t nbyte)
+char *vstr_ncpy(VStr *dst, const char *src, size_t nbyte)
 {
    size_t src_len;
 
@@ -182,14 +182,14 @@ char *vstr_ncpy(Vstr *dst, const char *src, size_t nbyte)
    return dst->ptr;
 }
 
-char *vstr_cat(Vstr *dst, const char *src)
+char *vstr_cat(VStr *dst, const char *src)
 {
    vstr_append_unchecked(dst, dst->len, src, strlen(src));
 
    return dst->ptr;
 }
 
-char *vstr_ncat(Vstr *dst, const char *src, size_t nbyte)
+char *vstr_ncat(VStr *dst, const char *src, size_t nbyte)
 {
    size_t src_len;
 
@@ -201,7 +201,7 @@ char *vstr_ncat(Vstr *dst, const char *src, size_t nbyte)
    return dst->ptr;
 }
 
-int vstr_sprintf(Vstr *dst, size_t pos, const char *format, ...)
+int vstr_sprintf(VStr *dst, size_t pos, const char *format, ...)
 {
    va_list args;
    va_start(args, format);

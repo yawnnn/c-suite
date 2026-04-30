@@ -15,7 +15,7 @@ No dependencies — just independent `.c` + `.h` pairs you can drop into your pr
 ### Included Data Structures
 
 * **Vec** — Dynamic, heap‑allocated array
-* **Vstr** — Dynamic, heap‑allocated string
+* **VStr** — Dynamic, heap‑allocated string
 * **LList** — Intrusive doubly‑linked list
 * **Arena** — Arena allocator
 * **FixedBuffer** — Fixed‑size buffer allocator

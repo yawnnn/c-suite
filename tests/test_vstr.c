@@ -8,7 +8,7 @@
 
 void test_vstr_new()
 {
-   Vstr vs;
+   VStr vs;
    vstr_new(&vs);
    assert(vstr_data(&vs) == NULL);
    assert(vstr_is_empty(&vs));
@@ -19,7 +19,7 @@ void test_vstr_new()
 
 void test_vstr_new_with()
 {
-   Vstr vs;
+   VStr vs;
    vstr_new_with(&vs, 32);
    assert(vstr_data(&vs) != NULL);
    assert(vstr_is_empty(&vs));
@@ -30,7 +30,7 @@ void test_vstr_new_with()
 
 void test_vstr_from()
 {
-   Vstr vs;
+   VStr vs;
    vstr_from(&vs, "hello");
    assert(strcmp(vstr_data(&vs), "hello") == 0);
    assert(!vstr_is_empty(&vs));
@@ -41,7 +41,7 @@ void test_vstr_from()
 
 void test_vstr_truncate()
 {
-   Vstr vs;
+   VStr vs;
    vstr_from(&vs, "abcdef");
    vstr_truncate(&vs, 3);
    assert(strcmp(vstr_data(&vs), "abc") == 0);
@@ -54,7 +54,7 @@ void test_vstr_truncate()
 
 void test_vstr_reserve_and_shrink()
 {
-   Vstr vs;
+   VStr vs;
    vstr_new(&vs);
    vstr_reserve(&vs, 64);
    assert(vstr_data(&vs) != NULL);
@@ -68,7 +68,7 @@ void test_vstr_reserve_and_shrink()
 
 void test_vstr_insert()
 {
-   Vstr vs;
+   VStr vs;
    vstr_from(&vs, "world");
    vstr_insert(&vs, 0, "hello ", 6);  // "hello world"
    assert(strcmp(vstr_data(&vs), "hello world") == 0);
@@ -81,7 +81,7 @@ void test_vstr_insert()
 
 void test_vstr_cpy_ncpy()
 {
-   Vstr vs;
+   VStr vs;
    vstr_new_with(&vs, 32);
    vstr_cpy(&vs, "foobar");
    assert(strcmp(vstr_data(&vs), "foobar") == 0);
@@ -94,7 +94,7 @@ void test_vstr_cpy_ncpy()
 
 void test_vstr_cat_ncat()
 {
-   Vstr vs;
+   VStr vs;
    vstr_from(&vs, "foo");
    vstr_cat(&vs, "bar");
    assert(strcmp(vstr_data(&vs), "foobar") == 0);
@@ -107,7 +107,7 @@ void test_vstr_cat_ncat()
 
 void test_vstr_data_from()
 {
-   Vstr vs;
+   VStr vs;
    vstr_from(&vs, "example");
    char *sub = vstr_at(&vs, 3);
    assert(strcmp(sub, "mple") == 0);
@@ -119,7 +119,7 @@ void test_vstr_data_from()
 
 void test_vstr_is_empty()
 {
-   Vstr vs;
+   VStr vs;
    vstr_new(&vs);
    assert(vstr_is_empty(&vs));
    vstr_cpy(&vs, "nonempty");
@@ -133,7 +133,7 @@ void test_vstr_is_empty()
 
 void test_vstr_sprintf()
 {
-   Vstr  vs = {0};
+   VStr  vs = {0};
    int   n = vstr_sprintf(&vs, 0, "This is %s n.%03d", "test", 1);
    char *res1 = "This is test n.001";
    assert(!strcmp(vstr_data(&vs), res1));

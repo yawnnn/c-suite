@@ -25,11 +25,11 @@
 /**
  * @brief dynamic heap-allocated string
  */
-typedef struct Vstr {
+typedef struct VStr {
    char  *ptr; /**< underlying c-style string (access through vstr_data()) */
    size_t len; /**< length of the Vstr */
    size_t cap; /**< capacity allocated */
-} Vstr;
+} VStr;
 
 /**
  * @brief new Vstr
@@ -39,7 +39,7 @@ typedef struct Vstr {
  *
  * @param[out] vs Vstr
  */
-void vstr_new(Vstr *vs);
+void vstr_new(VStr *vs);
 
 /**
  * @brief new Vstr with reserved space
@@ -49,7 +49,7 @@ void vstr_new(Vstr *vs);
  * @param[out] vs Vstr
  * @param[in] len minimum number of characters to reserve memory for
  */
-void vstr_new_with(Vstr *vs, size_t len);
+void vstr_new_with(VStr *vs, size_t len);
 
 /**
  * @brief new Vstr from c-style string
@@ -57,14 +57,14 @@ void vstr_new_with(Vstr *vs, size_t len);
  * @param[out] vs Vstr
  * @param[in] source source c-style string
  */
-void vstr_from(Vstr *vs, const char *source);
+void vstr_from(VStr *vs, const char *source);
 
 /**
  * @brief release memory
  *
  * @param[in,out] vs Vstr
  */
-void vstr_free(Vstr *vs);
+void vstr_free(VStr *vs);
 
 /**
  * @brief shorten the Vstr to the specified length
@@ -74,7 +74,7 @@ void vstr_free(Vstr *vs);
  * @param[in,out] vs Vstr
  * @param[in] new_len new length
  */
-void vstr_truncate(Vstr *vs, size_t new_len);
+void vstr_truncate(VStr *vs, size_t new_len);
 
 /**
  * @brief reserve memory ahead of time
@@ -82,14 +82,14 @@ void vstr_truncate(Vstr *vs, size_t new_len);
  * @param[in,out] vs Vstr
  * @param[in] len minimum number of characters to reserve memory for
  */
-void vstr_reserve(Vstr *vs, size_t len);
+void vstr_reserve(VStr *vs, size_t len);
 
 /**
  * @brief shrink allocated memory to what is exactly needed for length
  *
  * @param[in,out] vs Vstr
  */
-void vstr_shrink_to_fit(Vstr *vs);
+void vstr_shrink_to_fit(VStr *vs);
 
 /**
  * @brief return the underlying c-style string, or NULL
@@ -98,7 +98,7 @@ void vstr_shrink_to_fit(Vstr *vs);
  * 
  * @return c-style string or NULL
  */
-INLINE static char *vstr_data(Vstr *vs)
+INLINE static char *vstr_data(VStr *vs)
 {
    /* len can be 0, but still allocated because of the null-terminating character */
    if (vs->cap)
@@ -109,9 +109,9 @@ INLINE static char *vstr_data(Vstr *vs)
 /**
  * @brief const counterpart of @p vstr_data
  */
-INLINE static const char *vstr_data_const(const Vstr *vs)
+INLINE static const char *vstr_data_const(const VStr *vs)
 {
-   return vstr_data((Vstr *)vs);
+   return vstr_data((VStr *)vs);
 }
 
 /**
@@ -122,7 +122,7 @@ INLINE static const char *vstr_data_const(const Vstr *vs)
  * 
  * @return c-style string or NULL
  */
-INLINE static char *vstr_at(Vstr *vs, size_t pos)
+INLINE static char *vstr_at(VStr *vs, size_t pos)
 {
    // len can be 0, but still allocated because of the null-terminating character
    if (vs->cap && pos <= vs->len)
@@ -133,9 +133,9 @@ INLINE static char *vstr_at(Vstr *vs, size_t pos)
 /**
  * @brief const counterpart of @p vstr_at
  */
-INLINE static const char *vstr_at_const(const Vstr *vs, size_t pos)
+INLINE static const char *vstr_at_const(const VStr *vs, size_t pos)
 {
-   return vstr_at((Vstr *)vs, pos);
+   return vstr_at((VStr *)vs, pos);
 }
 
 /**
@@ -150,7 +150,7 @@ INLINE static const char *vstr_at_const(const Vstr *vs, size_t pos)
  * 
  * @return false on failure
  */
-bool vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num);
+bool vstr_insert(VStr *dest, size_t pos, const char *source, size_t num);
 
 /**
  * @brief strcpy for Vstr
@@ -160,7 +160,7 @@ bool vstr_insert(Vstr *dest, size_t pos, const char *source, size_t num);
  * 
  * @return the underlying c-style string of @p dest
  */
-char *vstr_cpy(Vstr *dest, const char *source);
+char *vstr_cpy(VStr *dest, const char *source);
 
 /**
  * @brief strncpy for Vstr
@@ -171,7 +171,7 @@ char *vstr_cpy(Vstr *dest, const char *source);
  * 
  * @return the underlying c-style string of @p dest
  */
-char *vstr_ncpy(Vstr *dest, const char *source, size_t num);
+char *vstr_ncpy(VStr *dest, const char *source, size_t num);
 
 /**
  * @brief strcat for Vstr
@@ -181,7 +181,7 @@ char *vstr_ncpy(Vstr *dest, const char *source, size_t num);
  * 
  * @return the underlying c-style string of @p dest
  */
-char *vstr_cat(Vstr *dest, const char *source);
+char *vstr_cat(VStr *dest, const char *source);
 
 /**
  * @brief strncat for Vstr
@@ -192,7 +192,7 @@ char *vstr_cat(Vstr *dest, const char *source);
  * 
  * @return the underlying c-style string of @p dest
  */
-char *vstr_ncat(Vstr *dest, const char *source, size_t num);
+char *vstr_ncat(VStr *dest, const char *source, size_t num);
 
 /**
  * @brief sprintf on Vstr
@@ -204,7 +204,7 @@ char *vstr_ncat(Vstr *dest, const char *source, size_t num);
  * 
  * @return number or characters written or -2 if @p pos is out-of-bounds or negative value returned by sprintf
  */
-int vstr_sprintf(Vstr *dst, size_t pos, const char *format, ...);
+int vstr_sprintf(VStr *dst, size_t pos, const char *format, ...);
 
 /**
  * @brief if Vstr is empty
@@ -213,7 +213,7 @@ int vstr_sprintf(Vstr *dst, size_t pos, const char *format, ...);
  * 
  * @return result
  */
-INLINE static bool vstr_is_empty(const Vstr *vs)
+INLINE static bool vstr_is_empty(const VStr *vs)
 {
    return vs->len == 0;
 }
