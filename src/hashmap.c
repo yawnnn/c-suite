@@ -80,15 +80,18 @@ hashnode_new(const void *key, size_t key_size, Hash hash, const void *val, size_
    return node;
 }
 
-INLINE static void hashnode_free(HashNode *node)
+INLINE static void hashnode_free(HashNode *node, FreeFn free_fn)
 {
+   if (free_fn)
+      free_fn(node->val);
    free(node->val);
    free(node);
 }
 
-static bool hashnode_eq(HashNode *node, const void *key, size_t key_size, Hash hash)
+static bool hashnode_eq(HashNode *node, const void *key, size_t key_size, Hash hash, CmpFn cmp_fn)
 {
-   return node->hash == hash && !memcmp(HASHNODE_KEY(node), key, key_size);
+   // memcmp works for HASHMAP_LEN_STR, because key_size is strlen+1
+   return node->hash == hash && !cmp_fn(HASHNODE_KEY(node), key, key_size);
 }
 
 //
@@ -115,7 +118,7 @@ hashmap_find(HashMap *map, const void *key, size_t key_size, Hash hash, HashNode
       return NULL;
 
    for (node = map->buckets[idx]; node; node = node->next) {
-      if (hashnode_eq(node, key, key_size, hash))
+      if (hashnode_eq(node, key, key_size, hash, map->cmp_fn))
          return node;
       prev = node;
    }
@@ -163,12 +166,21 @@ static HashNode *hashmap_insert(
    return node;
 }
 
-void hashmap_new(HashMap *map, size_t base_key_size, size_t base_val_size, HashFn hash_fn)
+void hashmap_new(
+   HashMap *map,
+   size_t   base_key_size,
+   size_t   base_val_size,
+   HashFn   hash_fn,
+   CmpFn    cmp_fn,
+   FreeFn   free_fn
+)
 {
    memset(map, 0, sizeof(*map));
    map->base_key_size = base_key_size;
    map->base_val_size = base_val_size;
    map->hash_fn = hash_fn ? hash_fn : default_hash_fn;
+   map->cmp_fn = cmp_fn ? cmp_fn : memcmp;
+   map->free_fn = free_fn;
 }
 
 bool hashmap_rehash(HashMap *map)
@@ -214,7 +226,7 @@ void hashmap_free(HashMap *map)
       HashNode *node = map->buckets[map->n_buckets];
       while (node) {
          HashNode *next = node->next;
-         hashnode_free(node);
+         hashnode_free(node, map->free_fn);
          node = next;
       }
    }
@@ -253,9 +265,13 @@ bool hashentry_set(HashEntry *entry, const void *val, void **pval, size_t *pval_
          node->val = malloc(val_size);
          node->val_size = val_size;
       }
-      else if (node->val_size < val_size) {
-         node->val = realloc(node->val, val_size);
-         node->val_size = val_size;
+      else {
+         if (map->free_fn)
+            map->free_fn(node->val);
+         if (node->val_size < val_size) {
+            node->val = realloc(node->val, val_size);
+            node->val_size = val_size;
+         }
       }
       memcpy(node->val, val, val_size);
    }
@@ -297,7 +313,7 @@ bool hashentry_remove(HashEntry *entry, void **pval, size_t *pval_size)
       free(node);
    }
    else
-      hashnode_free(node);
+      hashnode_free(node, map->free_fn);
    entry->node = entry->prev = NULL;
 
    return true;

@@ -43,13 +43,15 @@
 #define HASHNODE_KEY(node) ((void *)ALIGN_UP((node) + 1))
 
 typedef uint32_t Hash; /**< type of the hash */
-typedef Hash (*HashFn)(const void *key, size_t size); /**< custom hash function pointer */
+typedef Hash (*HashFn)(const void *key, size_t size);
+typedef void (*FreeFn)(void *ptr);
+typedef int (*CmpFn)(const void *ptr1, const void *ptr2, size_t num);
 
 typedef struct HashNode {
    struct HashNode *next;
    void            *val;
-   uint32_t         val_size; /**< value size. on 64bit this is "free", as it would be padding otherwise */
-   Hash             hash; /**< key's hash */
+   uint32_t val_size; /**< value size. on 64bit this is "free", as it would be padding otherwise */
+   Hash     hash; /**< key's hash */
 } HashNode;
 
 /**
@@ -60,6 +62,8 @@ typedef struct HashNode {
  * see @p hashmap_init for more details
  * 
  * also check-out @p HashEntry below, as it allows for optimizations and more control
+ * 
+ * @note the implementation assumes malloc never fails
  */
 typedef struct HashMap {
    HashNode **buckets; /**< array of buckets */
@@ -68,6 +72,8 @@ typedef struct HashMap {
    size_t     base_key_size; /**< size of the keys if its constant, or HASHMAP_LEN_STR */
    size_t     base_val_size; /**< size of the values if its constant, or HASHMAP_LEN_STR */
    HashFn     hash_fn; /**< hash function in use */
+   CmpFn      cmp_fn; /**< ustom compare function */
+   FreeFn     free_fn; /**< optional free function for data owned by values (not the values themselves) */
 } HashMap;
 
 /**
@@ -175,13 +181,23 @@ INLINE static const void *hashentry_val(const HashEntry *entry, size_t *pval_siz
  *       this is to make full use of the space occupied by @p HashNode
  * @note both keys and values are always cloned by the hashmap, for API simplicity
  * @note variable length keys/values that are not c-strings are not supported, for API simplicity
+ * @note keys can't own their own memory, it's quite a niche use-case.
  * 
  * @param[out] map hashmap
  * @param[in] base_key_size size of the keys. if they are variable length c-strings, pass HASHMAP_LEN_STR
  * @param[in] base_val_size size of the values. if they are variable length c-strings, pass HASHMAP_LEN_STR
  * @param[in] hash_fn if != NULL, custom hash function
+ * @param[in] cmp_fn if != NULL, custom compare function
+ * @param[in] free_fn if != NULL, free function for data owned by values (not the values themselves)
  */
-void hashmap_new(HashMap *map, size_t base_key_size, size_t base_val_size, HashFn hash_fn);
+void hashmap_new(
+   HashMap *map,
+   size_t   base_key_size,
+   size_t   base_val_size,
+   HashFn   hash_fn,
+   CmpFn    cmp_fn,
+   FreeFn   free_fn
+);
 
 /**
  * @brief get value corresponding to key
@@ -192,10 +208,10 @@ void hashmap_new(HashMap *map, size_t base_key_size, size_t base_val_size, HashF
  * 
  * @return pointer to the value, or NULL
  */
-INLINE static const void *hashmap_get(HashMap *map, const void *key, size_t *pval_size)
+INLINE static const void *hashmap_get(const HashMap *map, const void *key, size_t *pval_size)
 {
    HashEntry entry;
-   hashentry_init(&entry, map, key);
+   hashentry_init(&entry, (HashMap *)map, key);
    return hashentry_val(&entry, pval_size);
 }
 
@@ -210,7 +226,8 @@ INLINE static const void *hashmap_get(HashMap *map, const void *key, size_t *pva
  * 
  * @return if @p key existed
  */
-INLINE static bool hashmap_set(HashMap *map, const void *key, const void *val, void **pval, size_t *pval_size)
+INLINE static bool
+hashmap_set(HashMap *map, const void *key, const void *val, void **pval, size_t *pval_size)
 {
    HashEntry entry;
    hashentry_init(&entry, map, key);
@@ -237,10 +254,10 @@ INLINE static bool hashmap_remove(HashMap *map, const void *key, void **pval, si
 /**
  * @brief check if @p key exists in the hashmap
  */
-INLINE static bool hashmap_contains(HashMap *map, const void *key)
+INLINE static bool hashmap_contains(const HashMap *map, const void *key)
 {
    HashEntry entry;
-   return hashentry_init(&entry, map, key);
+   return hashentry_init(&entry, (HashMap *)map, key);
 }
 
 /**
